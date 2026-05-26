@@ -30,7 +30,9 @@ npm install
    npx supabase link --project-ref YOUR_PROJECT_REF
    npx supabase db push
    ```
-   Or paste SQL from `supabase/migrations/` into the SQL Editor, then run `supabase/seed/001_templates_and_programs.sql`
+   Or paste SQL from `supabase/migrations/` into the SQL Editor, then run seeds in order:
+   - `supabase/seed/001_templates_and_programs.sql`
+   - `supabase/seed/002_full_program_days.sql` (all 6 programs × 30 days)
 4. Enable Google OAuth (optional): Authentication → Providers → Google
 5. Copy project URL, anon key, and service role key
 
@@ -39,8 +41,6 @@ npm install
 ```bash
 cp .env.example apps/web/.env.local
 ```
-
-Fill in:
 
 | Variable | Required | Description |
 |----------|----------|-------------|
@@ -51,6 +51,7 @@ Fill in:
 | `NIM_API_KEY` | No | NVIDIA NIM fallback |
 | `AI_PRIMARY_PROVIDER` | No | `groq` (default) or `nim` |
 | `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3000` for local dev |
+| `VOICE_SERVICE_URL` | No | Self-hosted voice Docker (default `http://localhost:8765`) |
 
 ### 4. Run
 
@@ -66,62 +67,92 @@ Open [http://localhost:3000](http://localhost:3000)
 npm run build
 ```
 
+### 6. Optional: self-hosted voice (Phase 4)
+
+```bash
+cd services/voice
+docker compose up
+```
+
+Uses faster-whisper STT + Piper TTS. Point `VOICE_SERVICE_URL` at the service; `/api/voice-local` proxies transcription.
+
 ## Project Structure
 
 ```
 stoic/
 ├── apps/web/              # Next.js PWA
 │   ├── app/
-│   │   ├── (app)/         # Protected routes (home, journal, today, programs, calm, journey, profile)
-│   │   ├── api/           # chat, transcribe, voice-journal
-│   │   └── login/
+│   │   ├── (app)/         # Protected routes
+│   │   └── api/           # chat, transcribe, voice-journal, insights, voice-local
 │   └── public/manifest.json
 ├── packages/
-│   ├── ui/                # Design system (chat, journal, mood, breathing, voice)
+│   ├── ui/                # Design system + theme, passcode, streaks, ambient audio
 │   ├── ai/                # Groq/NIM providers, tools, companion, safety
-│   ├── db/                # Supabase client, types, queries
-│   └── config/            # Shared ESLint, TS, Tailwind
+│   └── db/                # Supabase client, types, queries
 ├── supabase/
-│   ├── migrations/        # Schema + RLS + pgvector
-│   └── seed/              # Templates + programs
-├── services/voice/        # Phase 4: Piper/Whisper Docker
+│   ├── migrations/        # Schema, RLS, pgvector, storage
+│   └── seed/              # Templates + full 30-day programs
+├── scripts/               # generate-program-days.mjs
+├── services/voice/        # Piper/Whisper Docker
 └── docs/
 ```
 
 ## Features
 
 ### Phase 1 — AI Core + Journal
-- AI companion home (chat + voice)
-- Voice/text → structured journal + action items
-- Journal timeline, search, entry detail
+- AI companion home (chat + voice) with quick actions
+- Desktop split-pane live journal preview
+- Tool calling: journal, mood, habits, breathing, meditation, programs, search, insights, memory
+- Voice → structured journal + action items (Groq Whisper)
+- Journal timeline, search, entry detail, action-item checkboxes
 - Mood check-in (1–5)
-- Persistent memory (pgvector + summaries)
+- Persistent memory (pgvector facts + session context)
+- Crisis keyword safety routing
 - Mobile bottom nav + desktop sidebar
+- Groq + NIM provider swap
 
 ### Phase 2 — Rituals + Calm
-- Morning/evening rituals
-- 18 guided journal templates
-- Breathing exercises (box, 4-7-8, physiological sigh)
-- Meditation timer + ambient presets
-- Habits + streaks
-- Today dashboard
+- Morning/evening ritual flows on Today dashboard
+- 18 guided journal templates (gratitude, CBT, therapy prep, dreams, anxiety, etc.)
+- Breathing exercises with animated circle (box, 4-7-8, physiological sigh, calm)
+- Pattern + cycle picker on breathe page
+- Meditation timer with ambient soundscapes (Web Audio)
+- Session logging for breathing + meditation
+- Habits + streak badges on Today and Journey
+- Today dashboard (mood, rituals, habits, recent journal)
 
 ### Phase 3 — Programs + Journey
-- 30-day program engine
-- 6 seed programs (Mindfulness, Gratitude, Journaling, Sleep, Digital Detox, Wellness Reset)
-- Journey tab with mood trends + export (JSON/Markdown)
+- 30-day program engine with enrollments and progress rings
+- **6 seed programs, each with 30 fully populated days:**
+  - Mindfulness 30, Gratitude 30, Journaling Habit 30
+  - Sleep Reset 30, Digital Detox 30, Wellness Reset 30
+- Program check-ins with journal prompts + meditation links
+- Journey tab: mood trends, calendar heatmap, on-this-day, streak stats
+- AI weekly review generation (`POST /api/insights/weekly`)
+- Export journal (Markdown + JSON)
 
 ### Phase 4 — Voice OSS + Privacy
 - Self-hosted Piper/Whisper Docker (`services/voice/`)
-- Locked entries + app passcode
-- Multimedia journal blocks (schema ready)
+- `/api/voice-local` proxy for OSS transcription
+- Locked entries + app passcode gate (session unlock)
+- Private entries (excluded from AI retrieval)
+- Photo blocks in journal (Supabase Storage `journal-media` bucket)
+- Dark mode + system theme toggle
+- PWA manifest + reduced-motion support
+
+## Regenerate program seed data
+
+```bash
+node scripts/generate-program-days.mjs
+```
 
 ## Deploy to Vercel
 
 1. Push to GitHub
-2. Import in Vercel, set root to `apps/web` or use monorepo detection
+2. Import in Vercel (monorepo: root `apps/web` or auto-detect)
 3. Add all env vars from `.env.example`
-4. Deploy
+4. Run Supabase migrations + seeds on your project
+5. Deploy
 
 ## License
 

@@ -1,11 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { createClient } from "@anchor/db/client";
 import { Button, Input, Card, CardContent, CardHeader, CardTitle } from "@anchor/ui";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
-export default function LoginPage() {
+function SetupBanner({ setup }: { setup: string | null }) {
+  if (setup === "required") {
+    return (
+      <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-sm text-amber-950 dark:text-amber-100">
+        <p className="font-medium">Setup required</p>
+        <p className="mt-1 text-muted-foreground">
+          Supabase is not configured yet. Add{" "}
+          <code className="text-xs">NEXT_PUBLIC_SUPABASE_URL</code> and{" "}
+          <code className="text-xs">NEXT_PUBLIC_SUPABASE_ANON_KEY</code> in Vercel,
+          then redeploy.
+        </p>
+      </div>
+    );
+  }
+
+  if (setup === "error") {
+    return (
+      <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm">
+        <p className="font-medium">Connection issue</p>
+        <p className="mt-1 text-muted-foreground">
+          Could not reach Supabase. Check your project URL and anon key, then try again.
+        </p>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const setup = searchParams.get("setup");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -54,6 +85,7 @@ export default function LoginPage() {
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
+          <SetupBanner setup={setup} />
           <form onSubmit={handleEmailAuth} className="space-y-3">
             <Input
               type="email"
@@ -101,5 +133,13 @@ export default function LoginPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center p-4">Loading...</div>}>
+      <LoginForm />
+    </Suspense>
   );
 }

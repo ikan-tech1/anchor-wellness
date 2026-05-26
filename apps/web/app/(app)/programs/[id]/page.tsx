@@ -104,6 +104,13 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
       </header>
 
       {enrollment && content ? (
+        <>
+          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{ width: `${(enrollment.current_day / program.duration_days) * 100}%` }}
+            />
+          </div>
         <Card>
           <CardHeader>
             <CardTitle>{content.title || `Day ${enrollment.current_day}`}</CardTitle>
@@ -133,6 +140,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
             </Button>
           </CardContent>
         </Card>
+        </>
       ) : (
         <Card>
           <CardContent className="p-6 text-center">

@@ -5,6 +5,7 @@ import { ChatUI, type ChatMessage } from "@anchor/ui";
 import { VoiceRecorder } from "@anchor/ui";
 import { Button } from "@anchor/ui";
 import { Mic, MessageSquare } from "lucide-react";
+import Link from "next/link";
 
 const QUICK_ACTIONS = [
   { label: "Journal my day", prompt: "Help me journal about my day. Ask me what happened and how I felt." },
@@ -27,6 +28,7 @@ export default function HomePage() {
   const [mode, setMode] = useState<"chat" | "voice">("chat");
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ title: string; body: string; link?: string } | null>(null);
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
@@ -53,6 +55,10 @@ export default function HomePage() {
       const data = await res.json();
       if (data.sessionId) setSessionId(data.sessionId);
 
+      const journalResult = data.toolResults?.find(
+        (t: { name: string; deepLink?: string }) => t.name === "create_journal_entry"
+      );
+
       setMessages((prev) => [
         ...prev,
         {
@@ -62,6 +68,14 @@ export default function HomePage() {
           toolResults: data.toolResults,
         },
       ]);
+
+      if (journalResult?.deepLink) {
+        setPreview({
+          title: "New journal entry",
+          body: data.content,
+          link: journalResult.deepLink,
+        });
+      }
     } catch {
       setMessages((prev) => [
         ...prev,
@@ -96,6 +110,11 @@ export default function HomePage() {
             toolResults: [{ name: "journal_entry", deepLink: `/journal/${data.entry.id}` }],
           },
         ]);
+        setPreview({
+          title: data.entry.title,
+          body: data.entry.body_md,
+          link: `/journal/${data.entry.id}`,
+        });
         setMode("chat");
       } else {
         await sendMessage(`Here's my voice journal: ${text}`);
@@ -105,8 +124,8 @@ export default function HomePage() {
     }
   };
 
-  return (
-    <div className="flex h-[calc(100dvh-4rem)] md:h-screen flex-col">
+  const chatPanel = (
+    <>
       <header className="flex items-center justify-between border-b border-border px-4 py-3">
         <div>
           <h1 className="text-lg font-semibold">Anchor</h1>
@@ -151,6 +170,41 @@ export default function HomePage() {
           onQuickAction={(prompt) => sendMessage(prompt)}
         />
       )}
+    </>
+  );
+
+  return (
+    <div className="flex h-[calc(100dvh-4rem)] md:h-screen flex-col md:flex-row">
+      <div className="flex flex-1 flex-col min-h-0 md:border-r md:border-border">
+        {chatPanel}
+      </div>
+      <aside className="hidden md:flex md:w-[380px] lg:w-[420px] flex-col bg-card/50 border-l border-border">
+        <div className="border-b border-border px-4 py-3">
+          <h2 className="text-sm font-medium">Live preview</h2>
+          <p className="text-xs text-muted-foreground">Journal entries created from chat</p>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4">
+          {preview ? (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">{preview.title}</h3>
+              <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                {preview.body}
+              </p>
+              {preview.link && (
+                <Link href={preview.link}>
+                  <Button variant="outline" size="sm" className="w-full">
+                    Open entry →
+                  </Button>
+                </Link>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground text-center py-12">
+              Start a conversation or use voice journaling. New entries will appear here on desktop.
+            </p>
+          )}
+        </div>
+      </aside>
     </div>
   );
 }

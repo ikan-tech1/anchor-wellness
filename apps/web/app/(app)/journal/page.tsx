@@ -14,6 +14,8 @@ interface Entry {
   mood_score: number | null;
   tags: string[];
   ritual_type: string | null;
+  is_locked?: boolean;
+  is_private?: boolean;
 }
 
 export default function JournalPage() {
@@ -89,6 +91,8 @@ export default function JournalPage() {
                 date={entry.created_at}
                 moodScore={entry.mood_score}
                 tags={entry.tags}
+                isLocked={entry.is_locked}
+                isPrivate={entry.is_private}
               />
             </Link>
           ))

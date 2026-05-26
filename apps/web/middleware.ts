@@ -1,7 +1,21 @@
+import { isSupabaseConfigured } from "@anchor/db/env";
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 export async function middleware(request: NextRequest) {
+  const path = request.nextUrl.pathname;
+
+  if (!isSupabaseConfigured()) {
+    if (path.startsWith("/login") || path.startsWith("/auth")) {
+      return NextResponse.next({ request });
+    }
+
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("setup", "required");
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -25,11 +39,20 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  let user = null;
+  try {
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  } catch {
+    if (path.startsWith("/login") || path.startsWith("/auth")) {
+      return supabaseResponse;
+    }
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.searchParams.set("setup", "error");
+    return NextResponse.redirect(url);
+  }
 
-  const path = request.nextUrl.pathname;
   const isAuthPage = path.startsWith("/login") || path.startsWith("/auth");
   const isAppPage =
     path.startsWith("/home") ||

@@ -30,7 +30,7 @@ INSERT INTO programs (slug, title, description, goal_type, duration_days, metada
 
 -- Sample program day content for Mindfulness 30 (days 1-7 as examples, rest generated similarly)
 INSERT INTO program_day_content (program_id, day_number, content)
-SELECT p.id, d.day_number, d.content
+SELECT p.id, d.day_number, d.content::jsonb
 FROM programs p
 CROSS JOIN (VALUES
   (1, '{"title": "Welcome to Mindfulness", "prompt": "What brings you to this practice?", "meditation_min": 5, "journal_prompt": "Why do I want to be more mindful?"}'),
@@ -45,7 +45,7 @@ WHERE p.slug = 'mindfulness-30';
 
 -- Gratitude 30 days 1-3
 INSERT INTO program_day_content (program_id, day_number, content)
-SELECT p.id, d.day_number, d.content::jsonb
+SELECT p.id, d.day_number, d.content::jsonb::jsonb
 FROM programs p
 CROSS JOIN (VALUES
   (1, '{"title": "Three Good Things", "prompt": "Write three good things from today", "journal_prompt": "Three good things:"}'),

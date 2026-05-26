@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@anchor/db/client";
-import { Card, CardContent, CardHeader, CardTitle, Button, MoodPicker, JournalCard } from "@anchor/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button, MoodPicker, JournalCard, StreakBadges, computeJournalStreak } from "@anchor/ui";
 import Link from "next/link";
 import { Sun, Moon, Wind, Timer, CheckCircle2 } from "lucide-react";
 
@@ -19,6 +19,7 @@ export default function TodayPage() {
   const [recentEntries, setRecentEntries] = useState<Array<{ id: string; title: string; body_md: string; created_at: string; mood_score: number | null; tags: string[] }>>([]);
   const [morningDone, setMorningDone] = useState(false);
   const [eveningDone, setEveningDone] = useState(false);
+  const [journalStreak, setJournalStreak] = useState(0);
   const supabase = createClient();
 
   useEffect(() => {
@@ -31,12 +32,13 @@ export default function TodayPage() {
 
     const today = new Date().toISOString().split("T")[0];
 
-    const [habitsRes, entriesRes, morningRes, eveningRes, logsRes] = await Promise.all([
+    const [habitsRes, entriesRes, morningRes, eveningRes, logsRes, allEntriesRes] = await Promise.all([
       supabase.from("habits").select("*").eq("user_id", user.id).eq("is_active", true),
       supabase.from("journal_entries").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
       supabase.from("journal_entries").select("id").eq("user_id", user.id).eq("ritual_type", "morning").gte("created_at", `${today}T00:00:00`).limit(1),
       supabase.from("journal_entries").select("id").eq("user_id", user.id).eq("ritual_type", "evening").gte("created_at", `${today}T00:00:00`).limit(1),
       supabase.from("habit_logs").select("*"),
+      supabase.from("journal_entries").select("created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
 
     const habitRows = habitsRes.data || [];
@@ -50,6 +52,7 @@ export default function TodayPage() {
     setRecentEntries(entriesRes.data || []);
     setMorningDone((morningRes.data?.length || 0) > 0);
     setEveningDone((eveningRes.data?.length || 0) > 0);
+    setJournalStreak(computeJournalStreak((allEntriesRes.data || []).map((e) => e.created_at)));
   }
 
   async function logMood(score: number) {
@@ -72,6 +75,12 @@ export default function TodayPage() {
         <h1 className="text-2xl font-semibold">Today</h1>
         <p className="text-muted-foreground">{todayStr}</p>
       </header>
+
+      {journalStreak > 0 && (
+        <StreakBadges
+          stats={{ journalStreak, habitStreak: 0, meditationCount: 0, breathingCount: 0 }}
+        />
+      )}
 
       <Card>
         <CardHeader>

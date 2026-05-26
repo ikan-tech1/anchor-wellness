@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "./button";
 import { ambientSounds } from "../tokens";
+import { playAmbient, stopAmbient } from "../lib/ambient-audio";
 import { Play, Pause, RotateCcw } from "lucide-react";
 
 interface MeditationTimerProps {
@@ -17,6 +18,12 @@ export function MeditationTimer({ durationSec = 300, ambient = "silence", onComp
   const [running, setRunning] = useState(false);
   const [selectedAmbient, setSelectedAmbient] = useState(ambient);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (running) playAmbient(selectedAmbient);
+    else stopAmbient();
+    return () => stopAmbient();
+  }, [running, selectedAmbient]);
 
   useEffect(() => {
     if (running && remaining > 0) {

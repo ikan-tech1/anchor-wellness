@@ -84,10 +84,12 @@ interface JournalCardProps {
   date: string;
   moodScore?: number | null;
   tags?: string[];
+  isLocked?: boolean;
+  isPrivate?: boolean;
   onClick?: () => void;
 }
 
-export function JournalCard({ title, preview, date, moodScore, tags, onClick }: JournalCardProps) {
+export function JournalCard({ title, preview, date, moodScore, tags, isLocked, isPrivate, onClick }: JournalCardProps) {
   return (
     <motion.button
       whileTap={{ scale: 0.98 }}
@@ -95,7 +97,10 @@ export function JournalCard({ title, preview, date, moodScore, tags, onClick }: 
       className="w-full text-left rounded-2xl border border-border bg-card p-4 hover:bg-accent/50 transition-colors"
     >
       <div className="flex items-start justify-between gap-2">
-        <h3 className="font-medium line-clamp-1">{title}</h3>
+        <h3 className="font-medium line-clamp-1 flex items-center gap-1.5">
+          {isLocked && <Lock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+          {title}
+        </h3>
         {moodScore && (
           <span className="text-lg shrink-0">{["😔", "😕", "😐", "🙂", "😊"][moodScore - 1]}</span>
         )}
@@ -105,6 +110,9 @@ export function JournalCard({ title, preview, date, moodScore, tags, onClick }: 
         <span className="text-xs text-muted-foreground">
           {new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
         </span>
+        {isPrivate && (
+          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">Private</span>
+        )}
         {tags?.slice(0, 2).map((tag) => (
           <span key={tag} className="rounded-full bg-secondary px-2 py-0.5 text-[10px] text-muted-foreground">
             {tag}

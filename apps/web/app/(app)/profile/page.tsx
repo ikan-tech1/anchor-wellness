@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@anchor/db/client";
-import { Card, CardContent, CardHeader, CardTitle, Button, Input } from "@anchor/ui";
+import { Card, CardContent, CardHeader, CardTitle, Button, Input, ThemeToggle } from "@anchor/ui";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -90,9 +90,12 @@ export default function ProfilePage() {
 
   return (
     <div className="p-4 md:p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Profile</h1>
-        <p className="text-muted-foreground text-sm">{email}</p>
+      <header className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold">Profile</h1>
+          <p className="text-muted-foreground text-sm">{email}</p>
+        </div>
+        <ThemeToggle />
       </header>
 
       <Card>
