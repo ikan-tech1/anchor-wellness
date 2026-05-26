@@ -1,4 +1,4 @@
 {
-  "installCommand": "cd ../.. && npm install",
-  "buildCommand": "cd ../.. && npx turbo build --filter=@anchor/web"
+  "installCommand": "npm install",
+  "buildCommand": "npx turbo build --filter=@anchor/web"
 }
