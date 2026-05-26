@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@anchor/db/client";
+import { useUser } from "@clerk/nextjs";
 import { Input } from "./input";
 import { Button } from "./button";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
@@ -18,12 +18,25 @@ async function hashPasscode(passcode: string): Promise<string> {
 }
 
 export function PasscodeGate({ children }: { children: React.ReactNode }) {
+  const clerkKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  const clerkEnabled =
+    clerkKey?.startsWith("pk_") && (clerkKey?.length ?? 0) > 20;
+
+  if (!clerkEnabled) {
+    return <>{children}</>;
+  }
+
+  return <PasscodeGateInner>{children}</PasscodeGateInner>;
+}
+
+function PasscodeGateInner({ children }: { children: React.ReactNode }) {
+  const { isLoaded, isSignedIn } = useUser();
   const [required, setRequired] = useState(false);
   const [verified, setVerified] = useState(true);
   const [passcode, setPasscode] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [storedHash, setStoredHash] = useState<string | null>(null);
 
   useEffect(() => {
     async function check() {
@@ -31,36 +44,33 @@ export function PasscodeGate({ children }: { children: React.ReactNode }) {
         setLoading(false);
         return;
       }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!isLoaded || !isSignedIn) {
         setLoading(false);
         return;
       }
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("app_passcode_hash")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (profile?.app_passcode_hash) {
-        setRequired(true);
-        setVerified(false);
+      try {
+        const res = await fetch("/api/profile/passcode");
+        if (res.ok) {
+          const { hash } = await res.json();
+          setStoredHash(hash);
+          if (hash) {
+            setRequired(true);
+            setVerified(false);
+          }
+        }
+      } catch {
+        // ignore
       }
       setLoading(false);
     }
     check();
-  }, [supabase]);
+  }, [isLoaded, isSignedIn]);
 
   async function submit() {
     setError("");
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("app_passcode_hash")
-      .eq("id", user.id)
-      .single();
+    if (!storedHash) return;
     const hash = await hashPasscode(passcode);
-    if (hash === profile?.app_passcode_hash) {
+    if (hash === storedHash) {
       sessionStorage.setItem(SESSION_KEY, "1");
       setVerified(true);
     } else {

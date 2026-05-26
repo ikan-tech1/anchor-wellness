@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { ClerkProvider } from "@clerk/nextjs";
 import { Geist } from "next/font/google";
 import { ThemeProvider } from "@anchor/ui";
 import "./globals.css";
@@ -30,16 +31,26 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
+const clerkPublishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+const clerkEnabled =
+  clerkPublishableKey?.startsWith("pk_") && clerkPublishableKey.length > 20;
+
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
+  const shell = (
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} font-sans grain min-h-screen`}>
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );
+
+  if (!clerkEnabled) {
+    return shell;
+  }
+
+  return <ClerkProvider publishableKey={clerkPublishableKey}>{shell}</ClerkProvider>;
 }

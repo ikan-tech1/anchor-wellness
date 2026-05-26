@@ -8,7 +8,8 @@ Talk or type your day → AI turns it into a beautiful journal, mood log, habits
 
 - **App:** Next.js 15, React 19, TypeScript, Tailwind CSS 4, Framer Motion
 - **Monorepo:** Turborepo with `apps/web`, `packages/ui`, `packages/ai`, `packages/db`, `packages/config`
-- **Backend:** Supabase (Auth, Postgres, pgvector, Storage, RLS)
+- **Auth:** Clerk (Google + email, free tier)
+- **Database:** Neon Postgres (pgvector for AI memory)
 - **AI:** Groq (`llama-3.3-70b-versatile`) primary, NVIDIA NIM fallback; Groq Whisper for STT
 - **Deploy:** Vercel-ready PWA
 
@@ -21,22 +22,22 @@ cd stoic
 npm install
 ```
 
-### 2. Supabase setup
+### 2. Clerk setup
 
-1. Create a free project at [supabase.com](https://supabase.com)
-2. Enable **pgvector** extension: Database → Extensions → search "vector" → enable
-3. Run migrations:
-   ```bash
-   npx supabase link --project-ref YOUR_PROJECT_REF
-   npx supabase db push
-   ```
-   Or paste SQL from `supabase/migrations/` into the SQL Editor, then run seeds in order:
-   - `supabase/seed/001_templates_and_programs.sql`
-   - `supabase/seed/002_full_program_days.sql` (all 6 programs × 30 days)
-4. Enable Google OAuth (optional): Authentication → Providers → Google
-5. Copy project URL, anon key, and service role key
+1. Create a free app at [dashboard.clerk.com](https://dashboard.clerk.com)
+2. Enable **Email** and **Google** sign-in under User & Authentication → Social connections
+3. Copy **Publishable key** and **Secret key** from API Keys
 
-### 3. Environment variables
+### 3. Neon setup
+
+1. Create a free project at [neon.tech](https://neon.tech)
+2. Copy the **connection string** (`DATABASE_URL`)
+3. In the Neon SQL editor, run:
+   - `neon/migrations/001_initial_schema.sql`
+   - `supabase/seed/001_templates_and_programs.sql` (still valid SQL)
+   - `supabase/seed/002_full_program_days.sql`
+
+### 4. Environment variables
 
 ```bash
 cp .env.example apps/web/.env.local
@@ -44,16 +45,16 @@ cp .env.example apps/web/.env.local
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes | Service role key (server only) |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Yes | Clerk publishable key |
+| `CLERK_SECRET_KEY` | Yes | Clerk secret key (server only) |
+| `DATABASE_URL` | Yes | Neon Postgres connection string |
 | `GROQ_API_KEY` | Yes | From [console.groq.com](https://console.groq.com) |
 | `NIM_API_KEY` | No | NVIDIA NIM fallback |
 | `AI_PRIMARY_PROVIDER` | No | `groq` (default) or `nim` |
 | `NEXT_PUBLIC_APP_URL` | No | `http://localhost:3000` for local dev |
 | `VOICE_SERVICE_URL` | No | Self-hosted voice Docker (default `http://localhost:8765`) |
 
-### 4. Run
+### 5. Run
 
 ```bash
 npm run dev
@@ -61,13 +62,13 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000)
 
-### 5. Build
+### 6. Build
 
 ```bash
 npm run build
 ```
 
-### 6. Optional: self-hosted voice (Phase 4)
+### 7. Optional: self-hosted voice (Phase 4)
 
 ```bash
 cd services/voice
@@ -88,10 +89,9 @@ stoic/
 ├── packages/
 │   ├── ui/                # Design system + theme, passcode, streaks, ambient audio
 │   ├── ai/                # Groq/NIM providers, tools, companion, safety
-│   └── db/                # Supabase client, types, queries
-├── supabase/
-│   ├── migrations/        # Schema, RLS, pgvector, storage
-│   └── seed/              # Templates + full 30-day programs
+│   └── db/                # Neon serverless driver, types, queries
+├── neon/migrations/       # Postgres schema (Clerk user IDs)
+├── supabase/seed/         # Templates + full 30-day programs (run on Neon)
 ├── scripts/               # generate-program-days.mjs
 ├── services/voice/        # Piper/Whisper Docker
 └── docs/

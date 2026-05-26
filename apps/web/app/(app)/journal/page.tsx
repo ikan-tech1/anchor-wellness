@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@anchor/db/client";
+import { fetchJournalEntries } from "@/app/actions/data";
 import { JournalCard, Input, Button } from "@anchor/ui";
 import Link from "next/link";
 import { Plus, Search } from "lucide-react";
@@ -22,7 +22,6 @@ export default function JournalPage() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
 
   useEffect(() => {
     loadEntries();
@@ -30,21 +29,14 @@ export default function JournalPage() {
 
   async function loadEntries() {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    let query = supabase
-      .from("journal_entries")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (search.trim()) {
-      query = query.or(`title.ilike.%${search}%,body_md.ilike.%${search}%`);
+    try {
+      const data = await fetchJournalEntries({
+        search: search.trim() || undefined,
+      });
+      setEntries(data as Entry[]);
+    } catch {
+      setEntries([]);
     }
-
-    const { data } = await query;
-    setEntries(data || []);
     setLoading(false);
   }
 
@@ -63,41 +55,39 @@ export default function JournalPage() {
       </header>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
+          placeholder="Search entries..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search entries..."
-          className="pl-10"
+          className="pl-9"
         />
       </div>
 
-      <div className="space-y-3">
-        {loading ? (
-          <p className="text-sm text-muted-foreground text-center py-8">Loading...</p>
-        ) : entries.length === 0 ? (
-          <div className="text-center py-12 space-y-3">
-            <p className="text-muted-foreground">No journal entries yet.</p>
-            <Link href="/home">
-              <Button variant="outline">Talk to Anchor</Button>
-            </Link>
-          </div>
-        ) : (
-          entries.map((entry) => (
-            <Link key={entry.id} href={`/journal/${entry.id}`}>
-              <JournalCard
-                title={entry.title}
-                preview={entry.body_md}
-                date={entry.created_at}
-                moodScore={entry.mood_score}
-                tags={entry.tags}
-                isLocked={entry.is_locked}
-                isPrivate={entry.is_private}
-              />
-            </Link>
-          ))
-        )}
-      </div>
+      {loading ? (
+        <p className="text-center text-muted-foreground py-8">Loading...</p>
+      ) : entries.length === 0 ? (
+        <div className="text-center py-12 space-y-3">
+          <p className="text-muted-foreground">No journal entries yet.</p>
+          <Link href="/journal/new">
+            <Button>Write your first entry</Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {entries.map((entry) => (
+            <JournalCard
+              key={entry.id}
+              title={entry.title}
+              preview={entry.body_md}
+              date={entry.created_at}
+              moodScore={entry.mood_score}
+              tags={entry.tags}
+              onClick={() => { window.location.href = `/journal/${entry.id}`; }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

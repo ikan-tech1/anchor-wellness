@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@anchor/db/client";
+import { fetchJourneyPageData, exportAllJournalEntries } from "@/app/actions/data";
 import {
   Card,
   CardContent,
@@ -36,67 +36,16 @@ export default function JourneyPage() {
     breathingCount: 0,
   });
   const [generating, setGenerating] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const since = new Date();
-    since.setDate(since.getDate() - 30);
-
-    const monthStart = new Date();
-    monthStart.setDate(1);
-
-    const [moodsRes, entriesRes, insightsRes, allEntriesRes, monthEntries, medRes, breathRes, habitLogs] =
-      await Promise.all([
-        supabase
-          .from("mood_checkins")
-          .select("score, logged_at")
-          .eq("user_id", user.id)
-          .gte("logged_at", since.toISOString())
-          .order("logged_at"),
-        supabase
-          .from("journal_entries")
-          .select("id", { count: "exact" })
-          .eq("user_id", user.id),
-        supabase
-          .from("weekly_insights")
-          .select("*")
-          .eq("user_id", user.id)
-          .order("week_start", { ascending: false })
-          .limit(4),
-        supabase
-          .from("journal_entries")
-          .select("id, title, body_md, created_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase
-          .from("journal_entries")
-          .select("created_at")
-          .eq("user_id", user.id)
-          .gte("created_at", monthStart.toISOString()),
-        supabase
-          .from("meditation_sessions")
-          .select("id", { count: "exact" })
-          .eq("user_id", user.id)
-          .gte("completed_at", since.toISOString()),
-        supabase
-          .from("breathing_sessions")
-          .select("id", { count: "exact" })
-          .eq("user_id", user.id)
-          .gte("completed_at", since.toISOString()),
-        supabase.from("habit_logs").select("completed_at").gte("completed_at", since.toISOString()),
-      ]);
-
-    // On this day: entries from same month/day in prior years
+    const data = await fetchJourneyPageData();
+    const allEntries = data.entries as OnThisDayEntry[];
     const today = new Date();
     const monthDay = `${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    const allEntries = allEntriesRes.data || [];
 
     const historical = allEntries.filter((e) => {
       const d = new Date(e.created_at);
@@ -105,46 +54,40 @@ export default function JourneyPage() {
     });
 
     const dayMap = new Map<string, number>();
-    (monthEntries.data || []).forEach((e) => {
+    (data.monthEntries as Array<{ created_at: string }>).forEach((e) => {
       const key = e.created_at.split("T")[0]!;
       dayMap.set(key, (dayMap.get(key) || 0) + 1);
     });
 
     setMoods(
-      (moodsRes.data || []).slice(-14).map((m) => ({
-        date: m.logged_at,
-        score: m.score,
-      }))
+      (data.moods as Array<{ score: number; logged_at: string }>)
+        .slice(-14)
+        .map((m) => ({ date: m.logged_at, score: m.score }))
     );
-    setEntryCount(entriesRes.count || 0);
-    setInsights(insightsRes.data || []);
+    setEntryCount(allEntries.length);
+    setInsights(data.insights as typeof insights);
     setOnThisDay(historical);
     setCalendarDays(
       [...dayMap.entries()].map(([date, count]) => ({ date, count })).sort((a, b) => a.date.localeCompare(b.date))
     );
     setStats({
       journalStreak: computeJournalStreak(allEntries.map((e) => e.created_at)),
-      habitStreak: computeJournalStreak((habitLogs.data || []).map((l) => l.completed_at)),
-      meditationCount: medRes.count || 0,
-      breathingCount: breathRes.count || 0,
+      habitStreak: computeJournalStreak(
+        (data.stats.habitLogs as Array<{ completed_at: string }>).map((l) => l.completed_at)
+      ),
+      meditationCount: (data.stats.meditations as unknown[]).length,
+      breathingCount: (data.stats.breathing as unknown[]).length,
     });
   }
 
   async function exportJournal(format: "json" | "markdown") {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: entries } = await supabase
-      .from("journal_entries")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at");
+    const entries = await exportAllJournalEntries();
 
     if (format === "json") {
-      const exportData = { exported_at: new Date().toISOString(), entries: entries || [] };
+      const exportData = { exported_at: new Date().toISOString(), entries };
       downloadBlob(JSON.stringify(exportData, null, 2), "application/json", "json");
     } else {
-      const md = (entries || [])
+      const md = entries
         .map(
           (e) =>
             `# ${e.title}\n\n*${new Date(e.created_at).toLocaleDateString()}* · Mood: ${e.mood_score || "—"}/5\n\n${e.body_md}\n\n---\n`

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@anchor/db/client";
+import { saveJournalEntry, fetchTemplateBySlug } from "@/app/actions/data";
 import { JournalEditor, MoodPicker, Button } from "@anchor/ui";
 
 function NewJournalContent() {
@@ -16,7 +16,6 @@ function NewJournalContent() {
   const [moodScore, setMoodScore] = useState<number>();
   const [saving, setSaving] = useState(false);
   const [templatePrompts, setTemplatePrompts] = useState<string[]>([]);
-  const supabase = createClient();
 
   useEffect(() => {
     if (ritual === "morning") {
@@ -30,13 +29,9 @@ function NewJournalContent() {
   }, [ritual, template]);
 
   async function loadTemplate(slug: string) {
-    const { data } = await supabase
-      .from("journal_templates")
-      .select("*")
-      .eq("slug", slug)
-      .single();
+    const data = await fetchTemplateBySlug(slug);
     if (data) {
-      setTitle(data.title);
+      setTitle(data.title as string);
       const prompts = data.prompts as string[];
       setTemplatePrompts(prompts);
       setBody(prompts.map((p) => `## ${p}\n\n`).join("\n"));
@@ -45,28 +40,18 @@ function NewJournalContent() {
 
   async function handleSave() {
     setSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("journal_entries")
-      .insert({
-        user_id: user.id,
+    try {
+      const data = await saveJournalEntry({
         title: title || "Untitled",
         body_md: body,
         mood_score: moodScore,
-        ritual_type: ritual as "morning" | "evening" | null,
-        template_slug: template,
-        source: template ? "template" : ritual ? "manual" : "manual",
-      })
-      .select()
-      .single();
-
-    if (!error && data) {
-      if (moodScore) {
-        await supabase.from("mood_checkins").insert({ user_id: user.id, score: moodScore });
-      }
+        ritual_type: ritual || undefined,
+        template_slug: template || undefined,
+        source: template ? "template" : "manual",
+      });
       router.push(`/journal/${data.id}`);
+    } catch {
+      // stay on page
     }
     setSaving(false);
   }
@@ -80,7 +65,11 @@ function NewJournalContent() {
         )}
       </header>
 
-      <MoodPicker value={moodScore} onChange={setMoodScore} size="sm" />
+      {templatePrompts.length > 0 && (
+        <p className="text-sm text-muted-foreground">
+          Prompts: {templatePrompts.join(" · ")}
+        </p>
+      )}
 
       <JournalEditor
         title={title}
@@ -90,13 +79,22 @@ function NewJournalContent() {
         onSave={handleSave}
         isSaving={saving}
       />
+
+      <div>
+        <p className="text-sm font-medium mb-2">Mood (optional)</p>
+        <MoodPicker value={moodScore} onChange={setMoodScore} />
+      </div>
+
+      <Button onClick={handleSave} disabled={saving} className="w-full">
+        {saving ? "Saving..." : "Save Entry"}
+      </Button>
     </div>
   );
 }
 
 export default function NewJournalPage() {
   return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
+    <Suspense fallback={<div className="p-6 text-center">Loading...</div>}>
       <NewJournalContent />
     </Suspense>
   );

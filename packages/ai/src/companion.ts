@@ -1,71 +1,49 @@
-import type { SupabaseClient } from "@supabase/supabase-js";
-import type { Database } from "@anchor/db/types";
+import {
+  getProfile,
+  getMemories,
+  getRecentMoods,
+  getActiveEnrollment,
+  getProgramById,
+  getJournalEntries,
+} from "@anchor/db";
 import { buildSystemPrompt, type CompanionContext } from "./prompts";
 
-type Client = SupabaseClient<Database>;
-
 export async function buildCompanionContext(
-  client: Client,
   userId: string
 ): Promise<CompanionContext> {
-  const [profile, memories, moods, program, entries] = await Promise.all([
-    client.from("profiles").select("*").eq("id", userId).maybeSingle(),
-    client
-      .from("memories")
-      .select("content")
-      .eq("user_id", userId)
-      .order("importance", { ascending: false })
-      .limit(8),
-    client
-      .from("mood_checkins")
-      .select("score")
-      .eq("user_id", userId)
-      .gte(
-        "logged_at",
-        new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
-      ),
-    client
-      .from("program_enrollments")
-      .select("current_day, program_id")
-      .eq("user_id", userId)
-      .eq("status", "active")
-      .limit(1)
-      .maybeSingle(),
-    client
-      .from("journal_entries")
-      .select("title, body_md")
-      .eq("user_id", userId)
-      .eq("ai_retrieval_allowed", true)
-      .order("created_at", { ascending: false })
-      .limit(5),
+  const [profile, memories, moods, enrollment, entries] = await Promise.all([
+    getProfile(userId).catch(() => null),
+    getMemories(userId, 8),
+    getRecentMoods(userId, 7),
+    getActiveEnrollment(userId).catch(() => null),
+    getJournalEntries(userId, { limit: 5 }),
   ]);
 
-  const moodScores = moods.data?.map((m) => m.score) || [];
+  const moodScores = (moods as Array<{ score: number }>).map((m) => m.score);
   const avgMood = moodScores.length
-    ? moodScores.reduce((a, b) => a + b, 0) / moodScores.length
+    ? moodScores.reduce((a: number, b: number) => a + b, 0) / moodScores.length
     : undefined;
 
   let activeProgram: CompanionContext["activeProgram"];
-  if (program.data) {
-    const { data: prog } = await client
-      .from("programs")
-      .select("title")
-      .eq("id", program.data.program_id)
-      .maybeSingle();
+  if (enrollment) {
+    const prog = await getProgramById(enrollment.program_id as string);
     if (prog) {
-      activeProgram = { title: prog.title, day: program.data.current_day };
+      activeProgram = {
+        title: prog.title as string,
+        day: enrollment.current_day as number,
+      };
     }
   }
 
   return {
-    displayName: profile.data?.display_name || undefined,
-    timezone: profile.data?.timezone,
-    memories: memories.data?.map((m) => m.content),
+    displayName: (profile?.display_name as string) || undefined,
+    timezone: profile?.timezone as string | undefined,
+    memories: (memories as Array<{ content: string }>).map((m) => m.content),
     recentMoodAvg: avgMood,
     activeProgram,
-    recentEntrySummaries: entries.data?.map(
-      (e) => `${e.title}: ${e.body_md.slice(0, 120)}...`
-    ),
+    recentEntrySummaries: (entries as Array<{ title: string; body_md: string; ai_retrieval_allowed?: boolean }>)
+      .filter((e) => e.ai_retrieval_allowed !== false)
+      .map((e) => `${e.title}: ${(e.body_md || "").slice(0, 120)}...`),
   };
 }
 

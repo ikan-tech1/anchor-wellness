@@ -19,6 +19,7 @@
     "lint": "eslint src/"
   },
   "dependencies": {
+    "@anchor/db": "*",
     "openai": "^4.103.0",
     "zod": "^3.25.28"
   },

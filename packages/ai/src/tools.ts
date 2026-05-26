@@ -1,4 +1,22 @@
 import type OpenAI from "openai";
+import type { Json } from "@anchor/db/types";
+import {
+  createJournalEntry,
+  createJournalBlocks,
+  updateJournalEntry,
+  getJournalEntry,
+  logMood,
+  findHabitByName,
+  logHabit,
+  getActiveEnrollment,
+  getProgramDayContent,
+  getProgramById,
+  insertProgramCheckin,
+  advanceProgramDay,
+  getJournalEntries,
+  getRecentMoods,
+  saveMemory,
+} from "@anchor/db";
 
 export const TOOL_DEFINITIONS: OpenAI.Chat.ChatCompletionTool[] = [
   {
@@ -188,7 +206,6 @@ export type ToolName =
 
 export interface ToolContext {
   userId: string;
-  supabase: import("@supabase/supabase-js").SupabaseClient;
 }
 
 export interface ToolResult {
@@ -203,31 +220,24 @@ export async function executeTool(
   args: Record<string, unknown>,
   ctx: ToolContext
 ): Promise<ToolResult> {
-  const db = ctx.supabase;
-
   switch (name as ToolName) {
     case "create_journal_entry": {
-      const { data: entry, error } = await db
-        .from("journal_entries")
-        .insert({
-          user_id: ctx.userId,
-          title: args.title as string,
-          body_md: (args.body_md as string) || "",
-          mood_score: args.mood_score as number | undefined,
-          tags: (args.tags as string[]) || [],
-          ritual_type: args.ritual_type as "morning" | "evening" | "freeform" | undefined,
-          source: "ai",
-        })
-        .select()
-        .single();
-      if (error) return { success: false, error: error.message };
+      const entry = await createJournalEntry({
+        user_id: ctx.userId,
+        title: args.title as string,
+        body_md: (args.body_md as string) || "",
+        mood_score: args.mood_score as number | undefined,
+        tags: (args.tags as string[]) || [],
+        ritual_type: args.ritual_type as "morning" | "evening" | "freeform" | undefined,
+        source: "ai",
+      });
 
       const actionItems = (args.action_items as string[]) || [];
       if (actionItems.length > 0) {
-        await db.from("journal_blocks").insert(
+        await createJournalBlocks(
           actionItems.map((text, i) => ({
-            entry_id: entry.id,
-            type: "action_item" as const,
+            entry_id: entry.id as string,
+            type: "action_item",
             payload: { text, completed: false },
             sort_order: i,
           }))
@@ -243,25 +253,17 @@ export async function executeTool(
     case "append_to_entry": {
       const entryId = args.entry_id as string;
       if (args.content) {
-        const { data: existing } = await db
-          .from("journal_entries")
-          .select("body_md")
-          .eq("id", entryId)
-          .single();
-        await db
-          .from("journal_entries")
-          .update({
-            body_md: `${existing?.body_md || ""}\n\n${args.content}`,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", entryId);
+        const existing = await getJournalEntry(entryId);
+        await updateJournalEntry(entryId, {
+          body_md: `${(existing.body_md as string) || ""}\n\n${args.content}`,
+        });
       }
       const actionItems = (args.action_items as string[]) || [];
       if (actionItems.length > 0) {
-        await db.from("journal_blocks").insert(
+        await createJournalBlocks(
           actionItems.map((text, i) => ({
             entry_id: entryId,
-            type: "action_item" as const,
+            type: "action_item",
             payload: { text, completed: false },
             sort_order: i,
           }))
@@ -271,39 +273,21 @@ export async function executeTool(
     }
 
     case "log_mood": {
-      const { data, error } = await db
-        .from("mood_checkins")
-        .insert({
-          user_id: ctx.userId,
-          score: args.score as number,
-          note: args.note as string | undefined,
-        })
-        .select()
-        .single();
-      if (error) return { success: false, error: error.message };
+      const data = await logMood({
+        user_id: ctx.userId,
+        score: args.score as number,
+        note: args.note as string | undefined,
+      });
       return { success: true, data };
     }
 
     case "log_habit": {
       const habitName = args.habit_name as string;
-      const { data: habits } = await db
-        .from("habits")
-        .select("id")
-        .eq("user_id", ctx.userId)
-        .ilike("name", `%${habitName}%`)
-        .limit(1);
-      if (!habits?.length) {
+      const habit = await findHabitByName(ctx.userId, habitName);
+      if (!habit) {
         return { success: false, error: `Habit "${habitName}" not found` };
       }
-      const { data, error } = await db
-        .from("habit_logs")
-        .insert({
-          habit_id: habits[0].id,
-          note: args.note as string | undefined,
-        })
-        .select()
-        .single();
-      if (error) return { success: false, error: error.message };
+      const data = await logHabit(habit.id as string, args.note as string | undefined);
       return { success: true, data };
     }
 
@@ -322,49 +306,40 @@ export async function executeTool(
       };
 
     case "get_program_checkin": {
-      const { data: enrollment } = await db
-        .from("program_enrollments")
-        .select("*")
-        .eq("user_id", ctx.userId)
-        .eq("status", "active")
-        .limit(1)
-        .maybeSingle();
+      const enrollment = await getActiveEnrollment(ctx.userId);
       if (!enrollment) {
         return { success: false, error: "No active program enrollment" };
       }
       if (args.action === "fetch") {
-        const [{ data: dayContent }, { data: program }] = await Promise.all([
-          db
-            .from("program_day_content")
-            .select("*")
-            .eq("program_id", enrollment.program_id)
-            .eq("day_number", enrollment.current_day)
-            .single(),
-          db.from("programs").select("*").eq("id", enrollment.program_id).single(),
+        const [dayContent, program] = await Promise.all([
+          getProgramDayContent(
+            enrollment.program_id as string,
+            enrollment.current_day as number
+          ),
+          getProgramById(enrollment.program_id as string),
         ]);
         return { success: true, data: { enrollment, dayContent, program } };
       }
-      await db.from("program_checkins").insert({
-        enrollment_id: enrollment.id,
-        day_number: enrollment.current_day,
-        responses: args.responses || {},
+      await insertProgramCheckin({
+        enrollment_id: enrollment.id as string,
+        day_number: enrollment.current_day as number,
+        responses: (args.responses as Json) || {},
       });
-      await db
-        .from("program_enrollments")
-        .update({ current_day: enrollment.current_day + 1 })
-        .eq("id", enrollment.id);
-      return { success: true, data: { nextDay: enrollment.current_day + 1 } };
+      await advanceProgramDay(
+        enrollment.id as string,
+        (enrollment.current_day as number) + 1
+      );
+      return {
+        success: true,
+        data: { nextDay: (enrollment.current_day as number) + 1 },
+      };
     }
 
     case "search_journal": {
-      const query = args.query as string;
-      const { data, error } = await db
-        .from("journal_entries")
-        .select("id, title, body_md, created_at, mood_score, tags")
-        .eq("user_id", ctx.userId)
-        .or(`title.ilike.%${query}%,body_md.ilike.%${query}%`)
-        .limit((args.limit as number) || 5);
-      if (error) return { success: false, error: error.message };
+      const data = await getJournalEntries(ctx.userId, {
+        search: args.query as string,
+        limit: (args.limit as number) || 5,
+      });
       return { success: true, data };
     }
 
@@ -373,46 +348,33 @@ export async function executeTool(
       const since = new Date();
       since.setDate(since.getDate() - days);
       const [moods, entries] = await Promise.all([
-        db
-          .from("mood_checkins")
-          .select("*")
-          .eq("user_id", ctx.userId)
-          .gte("logged_at", since.toISOString())
-          .order("logged_at"),
-        db
-          .from("journal_entries")
-          .select("id, title, mood_score, created_at")
-          .eq("user_id", ctx.userId)
-          .gte("created_at", since.toISOString())
-          .order("created_at"),
+        getRecentMoods(ctx.userId, days),
+        getJournalEntries(ctx.userId, { limit: 50 }),
       ]);
-      const avgMood =
-        moods.data?.length
-          ? moods.data.reduce((s, m) => s + m.score, 0) / moods.data.length
-          : null;
+      const filteredEntries = entries.filter(
+        (e) => new Date(e.created_at) >= since
+      );
+      const avgMood = moods.length
+        ? moods.reduce((s, m) => s + (m.score as number), 0) / moods.length
+        : null;
       return {
         success: true,
         data: {
           avgMood,
-          moodCount: moods.data?.length || 0,
-          entryCount: entries.data?.length || 0,
-          recentEntries: entries.data?.slice(-3),
+          moodCount: moods.length,
+          entryCount: filteredEntries.length,
+          recentEntries: filteredEntries.slice(-3),
         },
       };
     }
 
     case "save_memory": {
-      const { data, error } = await db
-        .from("memories")
-        .insert({
-          user_id: ctx.userId,
-          content: args.content as string,
-          type: args.type as "fact" | "preference" | "goal" | "summary",
-          importance: (args.importance as number) || 5,
-        })
-        .select()
-        .single();
-      if (error) return { success: false, error: error.message };
+      const data = await saveMemory({
+        user_id: ctx.userId,
+        content: args.content as string,
+        type: args.type as string,
+        importance: (args.importance as number) || 5,
+      });
       return { success: true, data };
     }
 

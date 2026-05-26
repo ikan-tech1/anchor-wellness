@@ -1,92 +1,91 @@
-import { isSupabaseConfigured } from "@anchor/db/env";
-import { createServerClient } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+const isPublicRoute = createRouteMatcher([
+  "/login(.*)",
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/webhooks(.*)",
+]);
+
+const isAppRoute = createRouteMatcher([
+  "/home(.*)",
+  "/today(.*)",
+  "/journal(.*)",
+  "/programs(.*)",
+  "/calm(.*)",
+  "/journey(.*)",
+  "/profile(.*)",
+]);
+
+function hasClerkKeys() {
+  const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY;
+  return Boolean(key && key.startsWith("pk_") && key.length > 20);
+}
+
+const clerkHandler = clerkMiddleware(async (auth, request) => {
   const path = request.nextUrl.pathname;
 
-  if (!isSupabaseConfigured()) {
-    if (path.startsWith("/login") || path.startsWith("/auth")) {
-      return NextResponse.next({ request });
-    }
-
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("setup", "required");
-    return NextResponse.redirect(url);
+  if (!isPublicRoute(request)) {
+    await auth.protect();
   }
 
-  let supabaseResponse = NextResponse.next({ request });
+  const { userId } = await auth();
+  const isAuthPage =
+    path.startsWith("/login") ||
+    path.startsWith("/sign-in") ||
+    path.startsWith("/sign-up");
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: { name: string; value: string; options?: Record<string, unknown> }[]) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value)
-          );
-          supabaseResponse = NextResponse.next({ request });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
-    }
-  );
-
-  let user = null;
-  try {
-    const { data } = await supabase.auth.getUser();
-    user = data.user;
-  } catch {
-    if (path.startsWith("/login") || path.startsWith("/auth")) {
-      return supabaseResponse;
-    }
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("setup", "error");
-    return NextResponse.redirect(url);
-  }
-
-  const isAuthPage = path.startsWith("/login") || path.startsWith("/auth");
-  const isAppPage =
-    path.startsWith("/home") ||
-    path.startsWith("/today") ||
-    path.startsWith("/journal") ||
-    path.startsWith("/programs") ||
-    path.startsWith("/calm") ||
-    path.startsWith("/journey") ||
-    path.startsWith("/journey") ||
-    path.startsWith("/profile");
-
-  if (!user && isAppPage) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
-  }
-
-  if (user && isAuthPage) {
+  if (userId && isAuthPage) {
     const url = request.nextUrl.clone();
     url.pathname = "/home";
     return NextResponse.redirect(url);
   }
 
-  if (path === "/") {
+  if (!userId && isAppRoute(request)) {
     const url = request.nextUrl.clone();
-    url.pathname = user ? "/home" : "/login";
+    url.pathname = "/sign-in";
     return NextResponse.redirect(url);
   }
 
-  return supabaseResponse;
+  if (path === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = userId ? "/home" : "/sign-in";
+    return NextResponse.redirect(url);
+  }
+
+  if (path === "/login") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/sign-in";
+    return NextResponse.redirect(url);
+  }
+});
+
+export default function middleware(
+  request: Parameters<typeof clerkHandler>[0],
+  event: Parameters<typeof clerkHandler>[1]
+) {
+  if (!hasClerkKeys()) {
+    const path = request.nextUrl.pathname;
+    if (path === "/") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/sign-in";
+      return NextResponse.redirect(url);
+    }
+    if (path === "/login") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/sign-in";
+      return NextResponse.redirect(url);
+    }
+    return NextResponse.next();
+  }
+
+  return clerkHandler(request, event);
 }
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|manifest.json|icons|api).*)",
+    "/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)",
+    "/(api|trpc)(.*)",
   ],
 };

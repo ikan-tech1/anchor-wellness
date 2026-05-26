@@ -1,17 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@anchor/db/server";
+import { auth } from "@clerk/nextjs/server";
 import { transcribeAudio } from "@anchor/ai/providers";
 
 export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createServerSupabaseClient } from "@anchor/db/server";
+import { auth, currentUser } from "@clerk/nextjs/server";
+import {
+  ensureProfile,
+  createConversationSession,
+  saveMessage,
+  getSessionMessages,
+} from "@anchor/db";
 import {
   buildCompanionContext,
   getSystemMessage,
@@ -14,14 +20,16 @@ export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabaseClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
+    const { userId } = await auth();
+    if (!userId) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
+
+    const user = await currentUser();
+    await ensureProfile(
+      userId,
+      user?.fullName ?? user?.primaryEmailAddress?.emailAddress ?? null
+    );
 
     const { message, sessionId: existingSessionId } = await request.json();
 
@@ -40,34 +48,27 @@ export async function POST(request: NextRequest) {
 
     let sessionId = existingSessionId;
     if (!sessionId) {
-      const { data: session } = await supabase
-        .from("conversation_sessions")
-        .insert({ user_id: user.id, title: message.slice(0, 50) })
-        .select()
-        .single();
-      sessionId = session?.id;
+      const session = await createConversationSession(
+        userId,
+        message.slice(0, 50)
+      );
+      sessionId = session.id as string;
     }
 
-    await supabase.from("messages").insert({
+    await saveMessage({
       session_id: sessionId,
       role: "user",
       content: message,
     });
 
-    const context = await buildCompanionContext(supabase, user.id);
-
-    const { data: history } = await supabase
-      .from("messages")
-      .select("role, content")
-      .eq("session_id", sessionId)
-      .order("created_at", { ascending: true })
-      .limit(20);
+    const context = await buildCompanionContext(userId);
+    const history = await getSessionMessages(sessionId, 20);
 
     const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       getSystemMessage(context),
-      ...(history || []).map((m) => ({
+      ...history.map((m) => ({
         role: m.role as "user" | "assistant" | "system",
-        content: m.content,
+        content: m.content as string,
       })),
     ];
 
@@ -84,8 +85,7 @@ export async function POST(request: NextRequest) {
       for (const toolCall of assistantMessage.tool_calls) {
         const args = JSON.parse(toolCall.function.arguments || "{}");
         const result = await executeTool(toolCall.function.name, args, {
-          userId: user.id,
-          supabase,
+          userId,
         });
 
         toolResults.push({
@@ -110,17 +110,12 @@ export async function POST(request: NextRequest) {
       assistantMessage?.content ||
       "I'm here to help. What would you like to explore?";
 
-    await supabase.from("messages").insert({
+    await saveMessage({
       session_id: sessionId,
       role: "assistant",
       content,
       tool_calls: toolResults.length ? toolResults : null,
     });
-
-    await supabase
-      .from("conversation_sessions")
-      .update({ last_message_at: new Date().toISOString() })
-      .eq("id", sessionId);
 
     return NextResponse.json({
       content,

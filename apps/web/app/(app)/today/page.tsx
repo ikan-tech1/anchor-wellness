@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { createClient } from "@anchor/db/client";
-import { Card, CardContent, CardHeader, CardTitle, Button, MoodPicker, JournalCard, StreakBadges, computeJournalStreak } from "@anchor/ui";
+import {
+  fetchTodayData,
+  recordMood,
+  completeHabit,
+} from "@/app/actions/data";
+import { Card, CardContent, CardHeader, CardTitle, MoodPicker, JournalCard, StreakBadges, computeJournalStreak } from "@anchor/ui";
 import Link from "next/link";
 import { Sun, Moon, Wind, Timer, CheckCircle2 } from "lucide-react";
 
@@ -20,50 +24,38 @@ export default function TodayPage() {
   const [morningDone, setMorningDone] = useState(false);
   const [eveningDone, setEveningDone] = useState(false);
   const [journalStreak, setJournalStreak] = useState(0);
-  const supabase = createClient();
 
   useEffect(() => {
     loadData();
   }, []);
 
   async function loadData() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
     const today = new Date().toISOString().split("T")[0];
-
-    const [habitsRes, entriesRes, morningRes, eveningRes, logsRes, allEntriesRes] = await Promise.all([
-      supabase.from("habits").select("*").eq("user_id", user.id).eq("is_active", true),
-      supabase.from("journal_entries").select("*").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
-      supabase.from("journal_entries").select("id").eq("user_id", user.id).eq("ritual_type", "morning").gte("created_at", `${today}T00:00:00`).limit(1),
-      supabase.from("journal_entries").select("id").eq("user_id", user.id).eq("ritual_type", "evening").gte("created_at", `${today}T00:00:00`).limit(1),
-      supabase.from("habit_logs").select("*"),
-      supabase.from("journal_entries").select("created_at").eq("user_id", user.id).order("created_at", { ascending: false }),
-    ]);
-
-    const habitRows = habitsRes.data || [];
-    const allLogs = logsRes.data || [];
+    const data = await fetchTodayData(today);
+    const allLogs = data.habitLogs as Array<{ habit_id: string; completed_at: string }>;
     setHabits(
-      habitRows.map((h) => ({
+      (data.habits as HabitWithLogs[]).map((h) => ({
         ...h,
         habit_logs: allLogs.filter((l) => l.habit_id === h.id),
       }))
     );
-    setRecentEntries(entriesRes.data || []);
-    setMorningDone((morningRes.data?.length || 0) > 0);
-    setEveningDone((eveningRes.data?.length || 0) > 0);
-    setJournalStreak(computeJournalStreak((allEntriesRes.data || []).map((e) => e.created_at)));
+    setRecentEntries(data.recentEntries as typeof recentEntries);
+    setMorningDone(!!data.morningEntry);
+    setEveningDone(!!data.eveningEntry);
+    setJournalStreak(
+      computeJournalStreak(
+        (data.entryDates as Array<{ created_at: string }>).map((e) => e.created_at)
+      )
+    );
   }
 
   async function logMood(score: number) {
     setMoodScore(score);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    await supabase.from("mood_checkins").insert({ user_id: user.id, score });
+    await recordMood(score);
   }
 
   async function logHabit(habitId: string) {
-    await supabase.from("habit_logs").insert({ habit_id: habitId });
+    await completeHabit(habitId);
     loadData();
   }
 
@@ -179,7 +171,7 @@ export default function TodayPage() {
               date={entry.created_at}
               moodScore={entry.mood_score}
               tags={entry.tags}
-              onClick={() => window.location.href = `/journal/${entry.id}`}
+              onClick={() => { window.location.href = `/journal/${entry.id}`; }}
             />
           ))}
         </section>

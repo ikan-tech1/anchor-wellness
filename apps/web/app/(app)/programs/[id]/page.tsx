@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { createClient } from "@anchor/db/client";
+import { fetchProgramDetail, submitProgramCheckin } from "@/app/actions/data";
 import { Card, CardContent, CardHeader, CardTitle, Button, Textarea } from "@anchor/ui";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
@@ -15,60 +15,33 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
   const [dayContent, setDayContent] = useState<{ content: unknown } | null>(null);
   const [responses, setResponses] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const supabase = createClient();
 
   useEffect(() => {
     loadProgram();
   }, [id]);
 
   async function loadProgram() {
-    const { data: prog } = await supabase.from("programs").select("*").eq("id", id).single();
-    setProgram(prog);
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data: enroll } = await supabase
-      .from("program_enrollments")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("program_id", id)
-      .eq("status", "active")
-      .maybeSingle();
-
+    const { program: prog, enrollment: enroll, dayContent: content } =
+      await fetchProgramDetail(id);
+    setProgram(prog as Program | null);
     if (enroll) {
-      setEnrollment(enroll);
-      const { data: content } = await supabase
-        .from("program_day_content")
-        .select("*")
-        .eq("program_id", id)
-        .eq("day_number", enroll.current_day)
-        .maybeSingle();
-      setDayContent(content);
+      setEnrollment({
+        id: enroll.id as string,
+        current_day: enroll.current_day as number,
+      });
+      setDayContent(content as { content: unknown } | null);
     }
   }
 
   async function submitCheckin() {
-    if (!enrollment) return;
+    if (!enrollment || !program) return;
     setSubmitting(true);
-
-    await supabase.from("program_checkins").insert({
-      enrollment_id: enrollment.id,
-      day_number: enrollment.current_day,
-      responses: { journal: responses },
-    });
-
-    const nextDay = enrollment.current_day + 1;
-    const isComplete = program && nextDay > program.duration_days;
-
-    await supabase
-      .from("program_enrollments")
-      .update({
-        current_day: nextDay,
-        status: isComplete ? "completed" : "active",
-      })
-      .eq("id", enrollment.id);
-
+    await submitProgramCheckin(
+      enrollment.id,
+      enrollment.current_day,
+      { journal: responses },
+      program.duration_days
+    );
     setSubmitting(false);
     loadProgram();
     setResponses("");
@@ -111,35 +84,35 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
               style={{ width: `${(enrollment.current_day / program.duration_days) * 100}%` }}
             />
           </div>
-        <Card>
-          <CardHeader>
-            <CardTitle>{content.title || `Day ${enrollment.current_day}`}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {content.prompt && (
-              <p className="text-sm text-muted-foreground">{content.prompt}</p>
-            )}
-            {content.journal_prompt && (
-              <div>
-                <p className="text-sm font-medium mb-2">{content.journal_prompt}</p>
-                <Textarea
-                  value={responses}
-                  onChange={(e) => setResponses(e.target.value)}
-                  placeholder="Write your reflection..."
-                  rows={4}
-                />
-              </div>
-            )}
-            {content.meditation_min && (
-              <Link href={`/calm/meditate?duration=${content.meditation_min * 60}`}>
-                <Button variant="outline">Start {content.meditation_min}min meditation</Button>
-              </Link>
-            )}
-            <Button onClick={submitCheckin} disabled={submitting} className="w-full">
-              {submitting ? "Saving..." : "Complete Day"}
-            </Button>
-          </CardContent>
-        </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>{content.title || `Day ${enrollment.current_day}`}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {content.prompt && (
+                <p className="text-sm text-muted-foreground">{content.prompt}</p>
+              )}
+              {content.journal_prompt && (
+                <div>
+                  <p className="text-sm font-medium mb-2">{content.journal_prompt}</p>
+                  <Textarea
+                    value={responses}
+                    onChange={(e) => setResponses(e.target.value)}
+                    placeholder="Write your reflection..."
+                    rows={4}
+                  />
+                </div>
+              )}
+              {content.meditation_min && (
+                <Link href={`/calm/meditate?duration=${content.meditation_min * 60}`}>
+                  <Button variant="outline">Start {content.meditation_min}min meditation</Button>
+                </Link>
+              )}
+              <Button onClick={submitCheckin} disabled={submitting} className="w-full">
+                {submitting ? "Saving..." : "Complete Day"}
+              </Button>
+            </CardContent>
+          </Card>
         </>
       ) : (
         <Card>
