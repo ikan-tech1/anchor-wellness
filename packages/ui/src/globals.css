@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #f7f6f3;
+  --color-foreground: #27211c;
+  --color-card: #ffffff;
+  --color-card-foreground: #27211c;
+  --color-primary: #5a7d5e;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #edeae3;
+  --color-secondary-foreground: #483f36;
+  --color-muted: #edeae3;
+  --color-muted-foreground: #7a6b57;
+  --color-accent: #d9d4c8;
+  --color-accent-foreground: #27211c;
+  --color-border: #d9d4c8;
+  --color-destructive: #dc2626;
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+}
+
+.dark {
+  --color-background: #1a1714;
+  --color-foreground: #f7f6f3;
+  --color-card: #27211c;
+  --color-card-foreground: #f7f6f3;
+  --color-primary: #7a9a7d;
+  --color-primary-foreground: #1a1714;
+  --color-secondary: #483f36;
+  --color-secondary-foreground: #edeae3;
+  --color-muted: #483f36;
+  --color-muted-foreground: #a89982;
+  --color-accent: #54493d;
+  --color-accent-foreground: #f7f6f3;
+  --color-border: #54493d;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .grain {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  }
+}
