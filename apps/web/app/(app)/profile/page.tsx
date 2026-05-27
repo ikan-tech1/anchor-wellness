@@ -3,7 +3,18 @@
 import { useEffect, useState } from "react";
 import { useUser, useClerk } from "@clerk/nextjs";
 import { fetchProfile, saveProfile, addHabit } from "@/app/actions/data";
-import { Card, CardContent, CardHeader, CardTitle, Button, Input, ThemeToggle } from "@anchor/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Input,
+  ThemeToggle,
+  PageHeader,
+  PageShell,
+  Label,
+} from "@anchor/ui";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
@@ -48,9 +59,7 @@ export default function ProfilePage() {
       const data = encoder.encode(passcode);
       const hashBuffer = await crypto.subtle.digest("SHA-256", data);
       const hashArray = Array.from(new Uint8Array(hashBuffer));
-      updates.app_passcode_hash = hashArray
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      updates.app_passcode_hash = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
     }
 
     await saveProfile(updates);
@@ -81,35 +90,34 @@ export default function ProfilePage() {
     user?.primaryEmailAddress?.emailAddress ?? user?.emailAddresses?.[0]?.emailAddress ?? "";
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold">Profile</h1>
-          <p className="text-muted-foreground text-sm">{email}</p>
-        </div>
-        <ThemeToggle />
-      </header>
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl">
+      <PageHeader
+        title="Profile"
+        description={email}
+        action={<ThemeToggle />}
+      />
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">Settings</CardTitle>
+          <CardTitle className="text-base font-medium">Settings</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <label className="text-sm font-medium">Display name</label>
+        <CardContent className="space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="display-name">Display name</Label>
             <Input
+              id="display-name"
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="mt-1"
             />
           </div>
 
-          <div>
-            <label className="text-sm font-medium">AI memory consent</label>
+          <div className="space-y-2">
+            <Label htmlFor="ai-consent">AI memory consent</Label>
             <select
+              id="ai-consent"
               value={aiConsent}
               onChange={(e) => setAiConsent(e.target.value)}
-              className="mt-1 w-full rounded-xl border border-border bg-card px-4 py-2 text-sm"
+              className="flex h-11 min-h-[44px] w-full rounded-xl border border-border bg-card px-4 py-2 text-sm shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
             >
               <option value="none">None — no memory</option>
               <option value="basic">Basic — session summaries</option>
@@ -117,50 +125,53 @@ export default function ProfilePage() {
             </select>
           </div>
 
-          <div>
-            <label className="text-sm font-medium">
+          <div className="space-y-2">
+            <Label htmlFor="passcode">
               App passcode {hasPasscode && "(set)"}
-            </label>
+            </Label>
             <Input
+              id="passcode"
               type="password"
               value={passcode}
               onChange={(e) => setPasscode(e.target.value)}
               placeholder="Set a 4+ digit passcode"
-              className="mt-1"
             />
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground">
               Protects locked journal entries on this device.
             </p>
           </div>
 
-          <Button onClick={handleSaveProfile} disabled={saving}>
-            {saving ? "Saving..." : "Save Settings"}
+          <Button onClick={handleSaveProfile} disabled={saving} className="w-full sm:w-auto">
+            {saving ? "Saving..." : "Save settings"}
           </Button>
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="shadow-soft">
         <CardHeader>
-          <CardTitle className="text-base">Quick Setup</CardTitle>
+          <CardTitle className="text-base font-medium">Quick setup</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
+        <CardContent className="space-y-3">
           <Button variant="outline" className="w-full" onClick={addDefaultHabits}>
             Add default habits
           </Button>
           <Link href="/journey">
-            <Button variant="outline" className="w-full">View Journey & Export</Button>
+            <Button variant="outline" className="w-full">
+              View journey & export
+            </Button>
           </Link>
         </CardContent>
       </Card>
 
-      <div className="rounded-xl border border-border bg-card/50 p-4 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground mb-1">Disclaimer</p>
-        Anchor is a wellness companion, not a medical device or substitute for professional mental health care. If you are in crisis, please contact 988 (US) or your local emergency services.
+      <div className="rounded-2xl border border-border bg-card/60 p-5 text-xs text-muted-foreground leading-relaxed">
+        <p className="font-medium text-foreground mb-2">Disclaimer</p>
+        Anchor is a wellness companion, not a medical device or substitute for professional mental
+        health care. If you are in crisis, please contact 988 (US) or your local emergency services.
       </div>
 
       <Button variant="destructive" onClick={handleSignOut} className="w-full">
-        Sign Out
+        Sign out
       </Button>
-    </div>
+    </PageShell>
   );
 }

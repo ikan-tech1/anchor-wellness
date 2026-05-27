@@ -11,23 +11,28 @@ interface MoodPickerProps {
 }
 
 export function MoodPicker({ value, onChange, size = "md" }: MoodPickerProps) {
-  const sizes = { sm: "text-2xl", md: "text-4xl", lg: "text-5xl" };
+  const sizes = { sm: "text-2xl p-2", md: "text-4xl p-3", lg: "text-5xl p-4" };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="flex gap-3">
+    <div className="flex flex-col items-center gap-4">
+      <div className="flex gap-2 sm:gap-3">
         {moodEmojis.map((emoji, i) => {
           const score = i + 1;
           const selected = value === score;
           return (
             <motion.button
               key={score}
-              whileTap={{ scale: 0.9 }}
+              type="button"
+              whileTap={{ scale: 0.88 }}
               onClick={() => onChange(score)}
+              aria-label={moodLabels[i]}
+              aria-pressed={selected}
               className={cn(
                 sizes[size],
-                "rounded-2xl p-2 transition-all",
-                selected ? "bg-primary/15 ring-2 ring-primary scale-110" : "opacity-60 hover:opacity-100"
+                "rounded-2xl transition-all touch-target",
+                selected
+                  ? "bg-primary/15 ring-2 ring-primary scale-110 shadow-soft"
+                  : "opacity-55 hover:opacity-100 hover:bg-secondary/80"
               )}
             >
               {emoji}
@@ -35,8 +40,16 @@ export function MoodPicker({ value, onChange, size = "md" }: MoodPickerProps) {
           );
         })}
       </div>
-      {value && (
-        <p className="text-sm text-muted-foreground">{moodLabels[value - 1]}</p>
+      {value ? (
+        <motion.p
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-sm font-medium text-muted-foreground"
+        >
+          {moodLabels[value - 1]}
+        </motion.p>
+      ) : (
+        <p className="text-sm text-muted-foreground">How are you feeling?</p>
       )}
     </div>
   );
@@ -51,15 +64,16 @@ export function MoodTrend({ data }: MoodTrendProps) {
   const maxScore = 5;
 
   return (
-    <div className="flex items-end gap-1 h-16">
+    <div className="flex items-end gap-1.5 h-20">
       {data.map((d, i) => (
-        <div key={i} className="flex flex-1 flex-col items-center gap-1">
+        <div key={i} className="flex flex-1 flex-col items-center gap-2">
           <motion.div
             initial={{ height: 0 }}
             animate={{ height: `${(d.score / maxScore) * 100}%` }}
-            className="w-full rounded-t-md bg-primary/60 min-h-[4px]"
+            transition={{ duration: 0.5, delay: i * 0.03 }}
+            className="w-full rounded-t-lg bg-gradient-to-t from-primary/40 to-primary/70 min-h-[6px]"
           />
-          <span className="text-[10px] text-muted-foreground">
+          <span className="text-[10px] text-muted-foreground tabular-nums">
             {new Date(d.date).toLocaleDateString(undefined, { weekday: "narrow" })}
           </span>
         </div>

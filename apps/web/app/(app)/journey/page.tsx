@@ -11,10 +11,13 @@ import {
   Button,
   StreakBadges,
   computeJournalStreak,
+  PageHeader,
+  PageShell,
+  EmptyState,
   type StreakStats,
 } from "@anchor/ui";
 import Link from "next/link";
-import { Calendar, Sparkles } from "lucide-react";
+import { Calendar, Sparkles, TrendingUp } from "lucide-react";
 
 interface OnThisDayEntry {
   id: string;
@@ -129,64 +132,51 @@ export default function JourneyPage() {
   const countByDate = new Map(calendarDays.map((d) => [d.date, d.count]));
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Journey</h1>
-          <p className="text-muted-foreground text-sm">Your wellness patterns over time</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => exportJournal("markdown")}>
-            Export MD
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => exportJournal("json")}>
-            Export JSON
-          </Button>
-        </div>
-      </header>
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl">
+      <PageHeader
+        title="Journey"
+        description="Your wellness patterns over time"
+        action={
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" size="sm" onClick={() => exportJournal("markdown")}>
+              Export MD
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => exportJournal("json")}>
+              Export JSON
+            </Button>
+          </div>
+        }
+      />
 
       <StreakBadges stats={stats} />
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold">{avgMood}</p>
-            <p className="text-xs text-muted-foreground">Avg mood (14d)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold">{entryCount}</p>
-            <p className="text-xs text-muted-foreground">Journal entries</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold">{stats.journalStreak}</p>
-            <p className="text-xs text-muted-foreground">Day streak</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-2xl font-semibold">{stats.meditationCount + stats.breathingCount}</p>
-            <p className="text-xs text-muted-foreground">Calm sessions</p>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          { value: avgMood, label: "Avg mood (14d)" },
+          { value: entryCount, label: "Journal entries" },
+          { value: stats.journalStreak, label: "Day streak" },
+          { value: stats.meditationCount + stats.breathingCount, label: "Calm sessions" },
+        ].map(({ value, label }) => (
+          <div key={label} className="stat-card">
+            <p className="text-2xl font-semibold tabular-nums">{value}</p>
+            <p className="text-xs text-muted-foreground mt-1">{label}</p>
+          </div>
+        ))}
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" /> This month
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle className="text-base font-medium flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-primary" /> This month
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-7 gap-1 text-center text-[10px] text-muted-foreground mb-2">
-            {["S", "M", "T", "W", "T", "F", "S"].map((d) => (
-              <span key={d}>{d}</span>
+          <div className="grid grid-cols-7 gap-1.5 text-center text-[10px] text-muted-foreground mb-2">
+            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+              <span key={`${d}-${i}`}>{d}</span>
             ))}
           </div>
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-1.5">
             {Array.from({ length: firstDay }).map((_, i) => (
               <div key={`pad-${i}`} />
             ))}
@@ -197,9 +187,11 @@ export default function JourneyPage() {
               return (
                 <div
                   key={day}
-                  className={`aspect-square rounded-lg flex items-center justify-center text-xs ${
-                    count > 0 ? "bg-primary/20 text-primary font-medium" : "bg-secondary/50 text-muted-foreground"
-                  } ${day === today.getDate() ? "ring-2 ring-primary/50" : ""}`}
+                  className={`aspect-square rounded-xl flex items-center justify-center text-xs transition-colors ${
+                    count > 0
+                      ? "bg-primary/20 text-primary font-semibold"
+                      : "bg-secondary/50 text-muted-foreground"
+                  } ${day === today.getDate() ? "ring-2 ring-primary/40" : ""}`}
                   title={count ? `${count} entries` : undefined}
                 >
                   {day}
@@ -211,19 +203,21 @@ export default function JourneyPage() {
       </Card>
 
       {onThisDay.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-base font-medium">On this day</h2>
+        <section className="space-y-4">
+          <h2 className="section-label">On this day</h2>
           {onThisDay.map((entry) => (
             <Link key={entry.id} href={`/journal/${entry.id}`}>
-              <Card className="hover:bg-accent/50 transition-colors">
+              <Card className="transition-all hover:border-primary/25 hover:shadow-card">
                 <CardHeader>
-                  <CardTitle className="text-sm">{entry.title}</CardTitle>
+                  <CardTitle className="text-sm font-medium">{entry.title}</CardTitle>
                   <p className="text-xs text-muted-foreground">
                     {new Date(entry.created_at).getFullYear()}
                   </p>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground line-clamp-2">{entry.body_md}</p>
+                  <p className="text-sm text-muted-foreground line-clamp-2 leading-relaxed">
+                    {entry.body_md}
+                  </p>
                 </CardContent>
               </Card>
             </Link>
@@ -232,9 +226,11 @@ export default function JourneyPage() {
       )}
 
       {moods.length > 0 && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
-            <CardTitle className="text-base">Mood Trend</CardTitle>
+            <CardTitle className="text-base font-medium flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-primary" /> Mood trend
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <MoodTrend data={moods} />
@@ -242,31 +238,36 @@ export default function JourneyPage() {
         </Card>
       )}
 
-      <section className="space-y-3">
+      <section className="space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-base font-medium flex items-center gap-2">
-            <Sparkles className="h-4 w-4" /> Weekly AI Review
+          <h2 className="section-label flex items-center gap-2">
+            <Sparkles className="h-3.5 w-3.5" /> Weekly AI review
           </h2>
           <Button variant="outline" size="sm" onClick={generateWeeklyReview} disabled={generating}>
             {generating ? "Generating..." : "Generate"}
           </Button>
         </div>
         {insights.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              Generate your first weekly review to see AI-powered patterns and reflections.
-            </CardContent>
-          </Card>
+          <EmptyState
+            icon={<Sparkles className="h-8 w-8 text-primary" />}
+            title="No reviews yet"
+            description="Generate your first weekly review to see AI-powered patterns and reflections."
+            action={
+              <Button variant="outline" onClick={generateWeeklyReview} disabled={generating}>
+                {generating ? "Generating..." : "Generate review"}
+              </Button>
+            }
+          />
         ) : (
           insights.map((insight) => (
-            <Card key={insight.week_start}>
+            <Card key={insight.week_start} className="shadow-soft">
               <CardHeader>
-                <CardTitle className="text-sm">
+                <CardTitle className="text-sm font-medium">
                   Week of {new Date(insight.week_start).toLocaleDateString()}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
                   {insight.summary_md || "No summary yet."}
                 </p>
               </CardContent>
@@ -277,9 +278,9 @@ export default function JourneyPage() {
 
       <Link href="/journal/templates">
         <Button variant="outline" className="w-full">
-          Browse Journal Templates
+          Browse journal templates
         </Button>
       </Link>
-    </div>
+    </PageShell>
   );
 }

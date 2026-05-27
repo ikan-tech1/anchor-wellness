@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { MeditationTimer } from "@anchor/ui";
+import { MeditationTimer, PageShell, PageHeader } from "@anchor/ui";
 import { recordMeditation } from "@/app/actions/data";
 
 function MeditateContent() {
@@ -14,20 +14,29 @@ function MeditateContent() {
     await recordMeditation(completedDuration, ambient);
   }
 
+  const mins = Math.round(duration / 60);
+
   return (
-    <div className="p-4 md:p-6">
+    <PageShell className="mx-auto max-w-lg">
+      <PageHeader title="Meditate" description={`${mins} minute session`} />
       <MeditationTimer
         durationSec={duration}
         ambient={ambient}
         onComplete={onComplete}
       />
-    </div>
+    </PageShell>
   );
 }
 
 export default function MeditatePage() {
   return (
-    <Suspense fallback={<div className="p-6 text-center">Loading...</div>}>
+    <Suspense
+      fallback={
+        <PageShell className="mx-auto max-w-lg">
+          <div className="py-24 text-center text-muted-foreground">Loading...</div>
+        </PageShell>
+      }
+    >
       <MeditateContent />
     </Suspense>
   );

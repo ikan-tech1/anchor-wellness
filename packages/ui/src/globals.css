@@ -15,26 +15,41 @@
   --color-accent-foreground: #27211c;
   --color-border: #d9d4c8;
   --color-destructive: #dc2626;
+  --color-surface-elevated: #ffffff;
+  --color-glow: rgba(90, 125, 94, 0.12);
+  --color-glow-warm: rgba(143, 127, 104, 0.1);
   --radius-sm: 0.5rem;
   --radius-md: 0.75rem;
   --radius-lg: 1rem;
   --radius-xl: 1.25rem;
+  --radius-2xl: 1.5rem;
+  --shadow-soft: 0 1px 3px rgba(39, 33, 28, 0.04), 0 4px 12px rgba(39, 33, 28, 0.06);
+  --shadow-card: 0 2px 8px rgba(39, 33, 28, 0.05), 0 8px 24px rgba(39, 33, 28, 0.04);
+  --shadow-elevated: 0 4px 16px rgba(39, 33, 28, 0.08), 0 12px 40px rgba(39, 33, 28, 0.06);
+  --shadow-nav: 0 -4px 24px rgba(39, 33, 28, 0.06);
 }
 
 .dark {
-  --color-background: #1a1714;
-  --color-foreground: #f7f6f3;
-  --color-card: #27211c;
-  --color-card-foreground: #f7f6f3;
-  --color-primary: #7a9a7d;
-  --color-primary-foreground: #1a1714;
-  --color-secondary: #483f36;
-  --color-secondary-foreground: #edeae3;
-  --color-muted: #483f36;
+  --color-background: #12100e;
+  --color-foreground: #f5f2ec;
+  --color-card: #1c1916;
+  --color-card-foreground: #f5f2ec;
+  --color-primary: #8aab8d;
+  --color-primary-foreground: #12100e;
+  --color-secondary: #2a2420;
+  --color-secondary-foreground: #d9d4c8;
+  --color-muted: #2a2420;
   --color-muted-foreground: #a89982;
-  --color-accent: #54493d;
-  --color-accent-foreground: #f7f6f3;
-  --color-border: #54493d;
+  --color-accent: #3d3530;
+  --color-accent-foreground: #f5f2ec;
+  --color-border: #3d3530;
+  --color-surface-elevated: #27211c;
+  --color-glow: rgba(138, 171, 141, 0.14);
+  --color-glow-warm: rgba(168, 153, 130, 0.08);
+  --shadow-soft: 0 1px 3px rgba(0, 0, 0, 0.2), 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25), 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.35), 0 12px 40px rgba(0, 0, 0, 0.25);
+  --shadow-nav: 0 -4px 24px rgba(0, 0, 0, 0.3);
 }
 
 @layer base {
@@ -45,14 +60,63 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+  h1, h2, h3 {
+    @apply tracking-tight;
+  }
 }
 
 @layer utilities {
   .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 0px);
+  }
+  .safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
   }
   .grain {
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+  .bg-mesh {
+    background:
+      radial-gradient(ellipse 80% 60% at 15% -10%, var(--color-glow), transparent 55%),
+      radial-gradient(ellipse 60% 50% at 85% 110%, var(--color-glow-warm), transparent 55%),
+      var(--color-background);
+  }
+  .font-serif {
+    font-family: var(--font-serif, Georgia, "Times New Roman", serif);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+  .shadow-card {
+    box-shadow: var(--shadow-card);
+  }
+  .shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+  .shadow-nav {
+    box-shadow: var(--shadow-nav);
+  }
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+  }
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .glass {
+    @apply bg-card/80 backdrop-blur-xl border-border/80;
+  }
+  .glass-nav {
+    @apply bg-card/90 backdrop-blur-xl border-border/80;
+  }
+  .editor-surface {
+    @apply rounded-2xl border border-border/60 bg-card/40 p-6 md:p-8 shadow-soft;
+  }
+  .stat-card {
+    @apply rounded-2xl border border-border bg-card p-4 text-center shadow-soft transition-shadow hover:shadow-card;
+  }
+  .section-label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
   }
 }
 

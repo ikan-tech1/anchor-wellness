@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import { fetchJournalEntries } from "@/app/actions/data";
-import { JournalCard, Input, Button } from "@anchor/ui";
+import {
+  JournalCard,
+  Input,
+  Button,
+  PageHeader,
+  PageShell,
+  EmptyState,
+  JournalCardSkeleton,
+} from "@anchor/ui";
 import Link from "next/link";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, BookOpen } from "lucide-react";
 
 interface Entry {
   id: string;
@@ -41,38 +49,52 @@ export default function JournalPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Journal</h1>
-          <p className="text-muted-foreground text-sm">Your reflections over time</p>
-        </div>
-        <Link href="/journal/new">
-          <Button size="sm">
-            <Plus className="h-4 w-4 mr-1" /> New
-          </Button>
-        </Link>
-      </header>
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl">
+      <PageHeader
+        title="Journal"
+        description="Your reflections over time"
+        action={
+          <Link href="/journal/new">
+            <Button size="sm">
+              <Plus className="h-4 w-4 mr-1.5" /> New
+            </Button>
+          </Link>
+        }
+      />
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search entries..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
+          className="pl-11"
         />
       </div>
 
       {loading ? (
-        <p className="text-center text-muted-foreground py-8">Loading...</p>
-      ) : entries.length === 0 ? (
-        <div className="text-center py-12 space-y-3">
-          <p className="text-muted-foreground">No journal entries yet.</p>
-          <Link href="/journal/new">
-            <Button>Write your first entry</Button>
-          </Link>
+        <div className="space-y-3">
+          <JournalCardSkeleton />
+          <JournalCardSkeleton />
+          <JournalCardSkeleton />
         </div>
+      ) : entries.length === 0 ? (
+        <EmptyState
+          icon={<BookOpen className="h-8 w-8 text-primary" />}
+          title={search ? "No matches found" : "Your journal awaits"}
+          description={
+            search
+              ? "Try a different search term or browse all entries."
+              : "Capture your thoughts, feelings, and moments. Your first entry is just a tap away."
+          }
+          action={
+            !search ? (
+              <Link href="/journal/new">
+                <Button>Write your first entry</Button>
+              </Link>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="space-y-3">
           {entries.map((entry) => (
@@ -83,11 +105,15 @@ export default function JournalPage() {
               date={entry.created_at}
               moodScore={entry.mood_score}
               tags={entry.tags}
-              onClick={() => { window.location.href = `/journal/${entry.id}`; }}
+              isLocked={entry.is_locked}
+              isPrivate={entry.is_private}
+              onClick={() => {
+                window.location.href = `/journal/${entry.id}`;
+              }}
             />
           ))}
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

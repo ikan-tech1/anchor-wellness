@@ -19,15 +19,33 @@ export const tokens = {
     md: "0.75rem",
     lg: "1rem",
     xl: "1.25rem",
+    "2xl": "1.5rem",
     full: "9999px",
   },
   spacing: {
-    navHeight: "4rem",
+    1: "0.25rem", // 4px
+    2: "0.5rem", // 8px
+    3: "0.75rem", // 12px
+    4: "1rem", // 16px
+    6: "1.5rem", // 24px
+    8: "2rem", // 32px
+    12: "3rem", // 48px
+    navHeight: "4.25rem",
     safeBottom: "env(safe-area-inset-bottom, 0px)",
+  },
+  typography: {
+    display: "text-4xl md:text-5xl font-serif font-medium tracking-tight",
+    h1: "text-3xl md:text-4xl font-serif font-medium tracking-tight",
+    h2: "text-xl md:text-2xl font-semibold tracking-tight",
+    h3: "text-lg font-semibold tracking-tight",
+    body: "text-[15px] leading-relaxed",
+    caption: "text-sm text-muted-foreground",
+    overline: "text-xs font-medium uppercase tracking-wider text-muted-foreground",
   },
   motion: {
     spring: { type: "spring" as const, stiffness: 300, damping: 30 },
     fade: { duration: 0.3 },
+    page: { initial: { opacity: 0, y: 8 }, animate: { opacity: 1, y: 0 }, transition: { duration: 0.35 } },
   },
 } as const;
 

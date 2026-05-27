@@ -2,8 +2,20 @@
 
 import { useEffect, useState } from "react";
 import { fetchProgramsPageData, joinProgram } from "@/app/actions/data";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from "@anchor/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  Button,
+  PageHeader,
+  PageShell,
+  ProgressBar,
+  EmptyState,
+} from "@anchor/ui";
 import Link from "next/link";
+import { Sparkles } from "lucide-react";
 
 interface Program {
   id: string;
@@ -44,33 +56,30 @@ export default function ProgramsPage() {
   const activeIds = new Set(enrollments.map((e) => e.program_id));
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Programs</h1>
-        <p className="text-muted-foreground text-sm">30-day guided wellness journeys</p>
-      </header>
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl">
+      <PageHeader
+        title="Programs"
+        description="30-day guided wellness journeys"
+      />
 
       {enrollments.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-base font-medium">Active</h2>
+        <section className="space-y-4">
+          <h2 className="section-label">Active</h2>
           {enrollments.map((e) => (
             <Link key={e.id} href={`/programs/${e.program_id}`}>
-              <Card className="hover:bg-accent/50 transition-colors border-primary/30">
-                <CardContent className="flex items-center gap-4 p-4">
-                  <span className="text-3xl">{e.programs?.metadata?.icon || "🌱"}</span>
-                  <div className="flex-1">
+              <Card className="transition-all hover:border-primary/30 hover:shadow-card border-primary/25 bg-primary/5">
+                <CardContent className="flex items-center gap-5 p-5">
+                  <span className="text-4xl">{e.programs?.metadata?.icon || "🌱"}</span>
+                  <div className="flex-1 min-w-0">
                     <p className="font-medium">{e.programs?.title}</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground mt-0.5">
                       Day {e.current_day} of {e.programs?.duration_days}
                     </p>
-                    <div className="mt-2 h-2 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{
-                          width: `${(e.current_day / (e.programs?.duration_days || 30)) * 100}%`,
-                        }}
-                      />
-                    </div>
+                    <ProgressBar
+                      className="mt-3"
+                      value={e.current_day}
+                      max={e.programs?.duration_days || 30}
+                    />
                   </div>
                 </CardContent>
               </Card>
@@ -79,34 +88,44 @@ export default function ProgramsPage() {
         </section>
       )}
 
-      <section className="space-y-3">
-        <h2 className="text-base font-medium">Explore</h2>
-        <div className="grid gap-3 sm:grid-cols-2">
-          {programs.map((program) => (
-            <Card key={program.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">{program.metadata?.icon || "🌱"}</span>
-                  <CardTitle className="text-base">{program.title}</CardTitle>
-                </div>
-                <CardDescription>{program.description}</CardDescription>
-              </CardHeader>
-              <CardContent className="mt-auto">
-                <p className="text-xs text-muted-foreground mb-3">{program.duration_days} days</p>
-                {activeIds.has(program.id) ? (
-                  <Link href={`/programs/${program.id}`}>
-                    <Button variant="outline" className="w-full">Continue</Button>
-                  </Link>
-                ) : (
-                  <Button className="w-full" onClick={() => enroll(program.id)}>
-                    Start Program
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+      <section className="space-y-4">
+        <h2 className="section-label">Explore</h2>
+        {programs.length === 0 ? (
+          <EmptyState
+            icon={<Sparkles className="h-8 w-8 text-primary" />}
+            title="Programs coming soon"
+            description="Guided wellness journeys will be available here."
+          />
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {programs.map((program) => (
+              <Card key={program.id} className="flex flex-col shadow-soft hover:shadow-card transition-shadow">
+                <CardHeader>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{program.metadata?.icon || "🌱"}</span>
+                    <CardTitle className="text-base font-medium">{program.title}</CardTitle>
+                  </div>
+                  <CardDescription>{program.description}</CardDescription>
+                </CardHeader>
+                <CardContent className="mt-auto">
+                  <p className="text-xs text-muted-foreground mb-4">{program.duration_days} days</p>
+                  {activeIds.has(program.id) ? (
+                    <Link href={`/programs/${program.id}`}>
+                      <Button variant="outline" className="w-full">
+                        Continue
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Button className="w-full" onClick={() => enroll(program.id)}>
+                      Start program
+                    </Button>
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </section>
-    </div>
+    </PageShell>
   );
 }

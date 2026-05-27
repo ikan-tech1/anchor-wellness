@@ -1,6 +1,6 @@
 export * from "./components/button";
 export * from "./components/card";
-export { Input, Textarea } from "./components/input";
+export { Input, Textarea, Label } from "./components/input";
 export * from "./components/bottom-nav";
 export * from "./components/chat-ui";
 export * from "./components/mood-picker";
@@ -11,6 +11,10 @@ export * from "./components/voice-recorder";
 export * from "./components/theme-provider";
 export * from "./components/passcode-gate";
 export * from "./components/streak-badges";
+export * from "./components/empty-state";
+export * from "./components/page-header";
+export * from "./components/skeleton";
+export * from "./components/progress-ring";
 export * from "./tokens";
 export { cn } from "./lib/utils";
 export { playAmbient, stopAmbient } from "./lib/ambient-audio";

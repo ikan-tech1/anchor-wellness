@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "framer-motion";
 import { cn } from "../lib/utils";
 
 export interface StreakStats {
@@ -23,26 +24,27 @@ const BADGES = [
 
 export function StreakBadges({ stats, className }: StreakBadgesProps) {
   return (
-    <div className={cn("flex flex-wrap gap-2", className)}>
+    <div className={cn("flex flex-wrap gap-3", className)}>
       {BADGES.map(({ key, label, icon, threshold }) => {
         const value = stats[key];
         const earned = value >= threshold;
         return (
-          <div
+          <motion.div
             key={key}
+            whileTap={{ scale: 0.97 }}
             className={cn(
-              "flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-3 rounded-2xl border px-4 py-3 text-sm transition-all shadow-soft",
               earned
-                ? "border-primary/40 bg-primary/10 text-foreground"
+                ? "border-primary/30 bg-primary/10 text-foreground"
                 : "border-border bg-card text-muted-foreground"
             )}
           >
-            <span>{icon}</span>
+            <span className="text-lg">{icon}</span>
             <div>
-              <p className="font-medium leading-none">{value}</p>
-              <p className="text-[10px] opacity-80">{label}</p>
+              <p className="font-semibold leading-none tabular-nums">{value}</p>
+              <p className="text-[10px] opacity-80 mt-0.5">{label}</p>
             </div>
-          </div>
+          </motion.div>
         );
       })}
     </div>

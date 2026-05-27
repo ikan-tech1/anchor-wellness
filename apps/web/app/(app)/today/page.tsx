@@ -6,9 +6,21 @@ import {
   recordMood,
   completeHabit,
 } from "@/app/actions/data";
-import { Card, CardContent, CardHeader, CardTitle, MoodPicker, JournalCard, StreakBadges, computeJournalStreak } from "@anchor/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  MoodPicker,
+  JournalCard,
+  StreakBadges,
+  computeJournalStreak,
+  PageHeader,
+  PageShell,
+} from "@anchor/ui";
 import Link from "next/link";
 import { Sun, Moon, Wind, Timer, CheckCircle2 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface HabitWithLogs {
   id: string;
@@ -17,10 +29,58 @@ interface HabitWithLogs {
   habit_logs: Array<{ completed_at: string }>;
 }
 
+const ritualCards = [
+  {
+    href: "/journal/new?ritual=morning",
+    icon: Sun,
+    iconClass: "text-amber-500",
+    title: "Morning Ritual",
+    doneLabel: "Done ✓",
+    pendingLabel: "Set intention",
+    doneKey: "morning" as const,
+  },
+  {
+    href: "/journal/new?ritual=evening",
+    icon: Moon,
+    iconClass: "text-indigo-400",
+    title: "Evening Ritual",
+    doneLabel: "Done ✓",
+    pendingLabel: "Reflect on day",
+    doneKey: "evening" as const,
+  },
+  {
+    href: "/calm/breathe",
+    icon: Wind,
+    iconClass: "text-primary",
+    title: "Breathe",
+    doneLabel: "",
+    pendingLabel: "Calm exercises",
+    doneKey: null,
+  },
+  {
+    href: "/calm/meditate",
+    icon: Timer,
+    iconClass: "text-primary",
+    title: "Meditate",
+    doneLabel: "",
+    pendingLabel: "Timer & ambient",
+    doneKey: null,
+  },
+];
+
 export default function TodayPage() {
   const [moodScore, setMoodScore] = useState<number>();
   const [habits, setHabits] = useState<HabitWithLogs[]>([]);
-  const [recentEntries, setRecentEntries] = useState<Array<{ id: string; title: string; body_md: string; created_at: string; mood_score: number | null; tags: string[] }>>([]);
+  const [recentEntries, setRecentEntries] = useState<
+    Array<{
+      id: string;
+      title: string;
+      body_md: string;
+      created_at: string;
+      mood_score: number | null;
+      tags: string[];
+    }>
+  >([]);
   const [morningDone, setMorningDone] = useState(false);
   const [eveningDone, setEveningDone] = useState(false);
   const [journalStreak, setJournalStreak] = useState(0);
@@ -59,14 +119,17 @@ export default function TodayPage() {
     loadData();
   }
 
-  const todayStr = new Date().toLocaleDateString(undefined, { weekday: "long", month: "long", day: "numeric" });
+  const todayStr = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  });
+
+  const ritualDone = { morning: morningDone, evening: eveningDone };
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">Today</h1>
-        <p className="text-muted-foreground">{todayStr}</p>
-      </header>
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl">
+      <PageHeader title="Today" description={todayStr} />
 
       {journalStreak > 0 && (
         <StreakBadges
@@ -74,84 +137,72 @@ export default function TodayPage() {
         />
       )}
 
-      <Card>
+      <Card className="shadow-card">
         <CardHeader>
-          <CardTitle className="text-base">How are you feeling?</CardTitle>
+          <CardTitle className="text-base font-medium">How are you feeling?</CardTitle>
         </CardHeader>
         <CardContent>
           <MoodPicker value={moodScore} onChange={logMood} />
         </CardContent>
       </Card>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Link href="/journal/new?ritual=morning">
-          <Card className={`hover:bg-accent/50 transition-colors ${morningDone ? "border-primary/50" : ""}`}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <Sun className="h-8 w-8 text-amber-500" />
-              <div>
-                <p className="font-medium text-sm">Morning Ritual</p>
-                <p className="text-xs text-muted-foreground">{morningDone ? "Done ✓" : "Set intention"}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/journal/new?ritual=evening">
-          <Card className={`hover:bg-accent/50 transition-colors ${eveningDone ? "border-primary/50" : ""}`}>
-            <CardContent className="flex items-center gap-3 p-4">
-              <Moon className="h-8 w-8 text-indigo-400" />
-              <div>
-                <p className="font-medium text-sm">Evening Ritual</p>
-                <p className="text-xs text-muted-foreground">{eveningDone ? "Done ✓" : "Reflect on day"}</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/calm/breathe">
-          <Card className="hover:bg-accent/50 transition-colors">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Wind className="h-8 w-8 text-primary" />
-              <div>
-                <p className="font-medium text-sm">Breathe</p>
-                <p className="text-xs text-muted-foreground">Calm exercises</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
-        <Link href="/calm/meditate">
-          <Card className="hover:bg-accent/50 transition-colors">
-            <CardContent className="flex items-center gap-3 p-4">
-              <Timer className="h-8 w-8 text-primary" />
-              <div>
-                <p className="font-medium text-sm">Meditate</p>
-                <p className="text-xs text-muted-foreground">Timer & ambient</p>
-              </div>
-            </CardContent>
-          </Card>
-        </Link>
+      <div className="grid grid-cols-2 gap-4">
+        {ritualCards.map(({ href, icon: Icon, iconClass, title, doneLabel, pendingLabel, doneKey }, i) => {
+          const done = doneKey ? ritualDone[doneKey] : false;
+          return (
+            <motion.div
+              key={href}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.05 }}
+            >
+              <Link href={href}>
+                <Card
+                  className={`h-full transition-all hover:border-primary/25 hover:shadow-card ${
+                    done ? "border-primary/40 bg-primary/5" : ""
+                  }`}
+                >
+                  <CardContent className="flex items-center gap-4 p-5">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-secondary/80">
+                      <Icon className={`h-6 w-6 ${iconClass}`} />
+                    </div>
+                    <div>
+                      <p className="font-medium text-sm">{title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {done ? doneLabel : pendingLabel}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
+            </motion.div>
+          );
+        })}
       </div>
 
       {habits.length > 0 && (
-        <Card>
+        <Card className="shadow-card">
           <CardHeader>
-            <CardTitle className="text-base">Habits</CardTitle>
+            <CardTitle className="text-base font-medium">Habits</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-1">
             {habits.map((habit) => {
-              const doneToday = habit.habit_logs.some(
-                (l) => l.completed_at.startsWith(new Date().toISOString().split("T")[0])
+              const doneToday = habit.habit_logs.some((l) =>
+                l.completed_at.startsWith(new Date().toISOString().split("T")[0]!)
               );
               return (
                 <button
                   key={habit.id}
+                  type="button"
                   onClick={() => !doneToday && logHabit(habit.id)}
-                  className="flex w-full items-center gap-3 rounded-xl p-3 hover:bg-accent/50 transition-colors"
+                  className="flex w-full items-center gap-4 rounded-xl p-4 hover:bg-accent/60 transition-colors touch-target"
                 >
-                  <span className="text-xl">{habit.icon}</span>
-                  <span className="flex-1 text-left text-sm">{habit.name}</span>
+                  <span className="text-2xl">{habit.icon}</span>
+                  <span className="flex-1 text-left text-sm font-medium">{habit.name}</span>
                   {doneToday ? (
-                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    <CheckCircle2 className="h-6 w-6 text-primary" />
                   ) : (
-                    <div className="h-5 w-5 rounded-full border-2 border-border" />
+                    <div className="h-6 w-6 rounded-full border-2 border-border" />
                   )}
                 </button>
               );
@@ -161,21 +212,25 @@ export default function TodayPage() {
       )}
 
       {recentEntries.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-base font-medium">Recent Journal</h2>
-          {recentEntries.map((entry) => (
-            <JournalCard
-              key={entry.id}
-              title={entry.title}
-              preview={entry.body_md}
-              date={entry.created_at}
-              moodScore={entry.mood_score}
-              tags={entry.tags}
-              onClick={() => { window.location.href = `/journal/${entry.id}`; }}
-            />
-          ))}
+        <section className="space-y-4">
+          <h2 className="section-label">Recent journal</h2>
+          <div className="space-y-3">
+            {recentEntries.map((entry) => (
+              <JournalCard
+                key={entry.id}
+                title={entry.title}
+                preview={entry.body_md}
+                date={entry.created_at}
+                moodScore={entry.mood_score}
+                tags={entry.tags}
+                onClick={() => {
+                  window.location.href = `/journal/${entry.id}`;
+                }}
+              />
+            ))}
+          </div>
         </section>
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -2,7 +2,18 @@
 
 import { useEffect, useState, use } from "react";
 import { fetchProgramDetail, submitProgramCheckin } from "@/app/actions/data";
-import { Card, CardContent, CardHeader, CardTitle, Button, Textarea } from "@anchor/ui";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Button,
+  Textarea,
+  PageShell,
+  PageSkeleton,
+  ProgressBar,
+  EmptyState,
+} from "@anchor/ui";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -15,6 +26,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
   const [dayContent, setDayContent] = useState<{ content: unknown } | null>(null);
   const [responses, setResponses] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadProgram();
@@ -31,6 +43,7 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
       });
       setDayContent(content as { content: unknown } | null);
     }
+    setLoading(false);
   }
 
   async function submitCheckin() {
@@ -47,8 +60,16 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
     setResponses("");
   }
 
+  if (loading) {
+    return <PageSkeleton />;
+  }
+
   if (!program) {
-    return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
+    return (
+      <PageShell className="mx-auto max-w-3xl">
+        <EmptyState title="Program not found" description="This program may have been removed." />
+      </PageShell>
+    );
   }
 
   const content = dayContent?.content as {
@@ -59,17 +80,20 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
   } | undefined;
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <Link href="/programs" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl space-y-6">
+      <Link
+        href="/programs"
+        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors touch-target"
+      >
         <ArrowLeft className="h-4 w-4" /> Programs
       </Link>
 
-      <header className="flex items-center gap-3">
-        <span className="text-4xl">{(program.metadata as { icon?: string })?.icon || "🌱"}</span>
+      <header className="flex items-center gap-4">
+        <span className="text-5xl">{(program.metadata as { icon?: string })?.icon || "🌱"}</span>
         <div>
-          <h1 className="text-2xl font-semibold">{program.title}</h1>
+          <h1 className="font-serif text-3xl font-medium tracking-tight">{program.title}</h1>
           {enrollment && (
-            <p className="text-muted-foreground">
+            <p className="text-muted-foreground mt-1">
               Day {enrollment.current_day} of {program.duration_days}
             </p>
           )}
@@ -78,52 +102,58 @@ export default function ProgramDetailPage({ params }: { params: Promise<{ id: st
 
       {enrollment && content ? (
         <>
-          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-            <div
-              className="h-full bg-primary rounded-full transition-all"
-              style={{ width: `${(enrollment.current_day / program.duration_days) * 100}%` }}
-            />
-          </div>
-          <Card>
+          <ProgressBar
+            value={enrollment.current_day}
+            max={program.duration_days}
+            showLabel
+          />
+          <Card className="shadow-card">
             <CardHeader>
-              <CardTitle>{content.title || `Day ${enrollment.current_day}`}</CardTitle>
+              <CardTitle className="font-serif text-xl">
+                {content.title || `Day ${enrollment.current_day}`}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               {content.prompt && (
-                <p className="text-sm text-muted-foreground">{content.prompt}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">{content.prompt}</p>
               )}
               {content.journal_prompt && (
-                <div>
-                  <p className="text-sm font-medium mb-2">{content.journal_prompt}</p>
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">{content.journal_prompt}</p>
                   <Textarea
                     value={responses}
                     onChange={(e) => setResponses(e.target.value)}
                     placeholder="Write your reflection..."
-                    rows={4}
+                    rows={5}
+                    className="min-h-[140px]"
                   />
                 </div>
               )}
               {content.meditation_min && (
                 <Link href={`/calm/meditate?duration=${content.meditation_min * 60}`}>
-                  <Button variant="outline">Start {content.meditation_min}min meditation</Button>
+                  <Button variant="outline">
+                    Start {content.meditation_min}min meditation
+                  </Button>
                 </Link>
               )}
-              <Button onClick={submitCheckin} disabled={submitting} className="w-full">
-                {submitting ? "Saving..." : "Complete Day"}
+              <Button onClick={submitCheckin} disabled={submitting} className="w-full" size="lg">
+                {submitting ? "Saving..." : "Complete day"}
               </Button>
             </CardContent>
           </Card>
         </>
       ) : (
-        <Card>
-          <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground">Enroll in this program to begin your journey.</p>
+        <EmptyState
+          icon={<span className="text-3xl">🌱</span>}
+          title="Not enrolled yet"
+          description="Enroll in this program from the programs page to begin your journey."
+          action={
             <Link href="/programs">
-              <Button className="mt-4">Back to Programs</Button>
+              <Button>Back to programs</Button>
             </Link>
-          </CardContent>
-        </Card>
+          }
+        />
       )}
-    </div>
+    </PageShell>
   );
 }

@@ -77,48 +77,70 @@ export function BreathingExercise({ pattern = "box", cycles = 4, onComplete }: B
     return order[nextIdx]!;
   }
 
-  const scale = phase === "inhale" ? 1.2 : phase === "exhale" ? 0.8 : 1;
+  const scale = phase === "inhale" ? 1.25 : phase === "exhale" ? 0.75 : 1;
+  const duration = phaseDurations[phase] || 1;
 
   return (
-    <div className="flex flex-col items-center gap-8 py-8">
-      <h2 className="text-xl font-semibold">{config.name}</h2>
-      <p className="text-sm text-muted-foreground">
-        Cycle {Math.min(cycle, cycles)} of {cycles}
-      </p>
+    <div className="flex flex-col items-center gap-10 py-8">
+      <div className="text-center space-y-1">
+        <p className="text-sm text-muted-foreground">
+          Cycle {Math.min(cycle, cycles)} of {cycles}
+        </p>
+      </div>
 
-      <div className="relative flex h-64 w-64 items-center justify-center">
+      <div className="relative flex h-72 w-72 items-center justify-center">
         <motion.div
-          animate={{ scale }}
-          transition={{ duration: phaseDurations[phase] || 1, ease: "easeInOut" }}
-          className={cn(
-            "absolute h-48 w-48 rounded-full bg-primary/20",
-            running && phase === "inhale" && "bg-primary/30",
-            running && phase === "exhale" && "bg-primary/10"
-          )}
+          animate={{ scale: running ? scale * 1.15 : 1, opacity: running ? 0.5 : 0.3 }}
+          transition={{ duration, ease: "easeInOut" }}
+          className="absolute h-56 w-56 rounded-full bg-primary/10"
         />
         <motion.div
-          animate={{ scale: scale * 0.85 }}
-          transition={{ duration: phaseDurations[phase] || 1, ease: "easeInOut" }}
-          className="absolute h-36 w-36 rounded-full bg-primary/40 flex items-center justify-center"
+          animate={{ scale: running ? scale : 1 }}
+          transition={{ duration, ease: "easeInOut" }}
+          className={cn(
+            "absolute h-44 w-44 rounded-full flex items-center justify-center shadow-elevated",
+            running && phase === "inhale" && "bg-primary/25",
+            running && phase === "exhale" && "bg-primary/15",
+            !running && "bg-primary/20"
+          )}
         >
           <div className="text-center">
             <p className="text-lg font-medium">{phaseLabels[phase]}</p>
-            {running && <p className="text-3xl font-light mt-1">{countdown}</p>}
+            {running && phase !== "done" && (
+              <motion.p
+                key={countdown}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="font-serif text-5xl font-light mt-2 tabular-nums"
+              >
+                {countdown}
+              </motion.p>
+            )}
           </div>
         </motion.div>
       </div>
 
       {phase === "done" ? (
-        <p className="text-primary font-medium">Well done 🌿</p>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-primary font-medium text-lg"
+        >
+          Well done 🌿
+        </motion.p>
       ) : (
-        <Button onClick={() => {
-          if (!running) {
-            setPhase("inhale");
-            setCountdown(config.inhale);
-            setCycle(1);
-          }
-          setRunning(!running);
-        }} size="lg">
+        <Button
+          onClick={() => {
+            if (!running) {
+              setPhase("inhale");
+              setCountdown(config.inhale);
+              setCycle(1);
+            }
+            setRunning(!running);
+          }}
+          size="lg"
+          className="min-w-[140px]"
+        >
           {running ? "Pause" : "Start"}
         </Button>
       )}

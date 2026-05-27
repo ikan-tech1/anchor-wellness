@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { saveJournalEntry, fetchTemplateBySlug } from "@/app/actions/data";
-import { JournalEditor, MoodPicker, Button } from "@anchor/ui";
+import { JournalEditor, MoodPicker, PageHeader, PageShell, PageSkeleton } from "@anchor/ui";
 
 function NewJournalContent() {
   const router = useRouter();
@@ -56,17 +56,18 @@ function NewJournalContent() {
     setSaving(false);
   }
 
+  const subtitle = ritual
+    ? `${ritual} ritual`
+    : template
+      ? "Guided template"
+      : "Freeform entry";
+
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <header>
-        <h1 className="text-2xl font-semibold">New Entry</h1>
-        {ritual && (
-          <p className="text-sm text-muted-foreground capitalize">{ritual} ritual</p>
-        )}
-      </header>
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl">
+      <PageHeader title="New entry" description={subtitle} />
 
       {templatePrompts.length > 0 && (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground -mt-4">
           Prompts: {templatePrompts.join(" · ")}
         </p>
       )}
@@ -78,23 +79,25 @@ function NewJournalContent() {
         onBodyChange={setBody}
         onSave={handleSave}
         isSaving={saving}
+        suggestions={[
+          "What am I grateful for?",
+          "What's weighing on me?",
+          "What did I learn today?",
+        ]}
+        onSuggestion={(s) => setBody((b) => `${b}\n\n## ${s}\n\n`)}
       />
 
-      <div>
-        <p className="text-sm font-medium mb-2">Mood (optional)</p>
-        <MoodPicker value={moodScore} onChange={setMoodScore} />
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+        <p className="section-label mb-4">Mood (optional)</p>
+        <MoodPicker value={moodScore} onChange={setMoodScore} size="sm" />
       </div>
-
-      <Button onClick={handleSave} disabled={saving} className="w-full">
-        {saving ? "Saving..." : "Save Entry"}
-      </Button>
-    </div>
+    </PageShell>
   );
 }
 
 export default function NewJournalPage() {
   return (
-    <Suspense fallback={<div className="p-6 text-center">Loading...</div>}>
+    <Suspense fallback={<PageSkeleton />}>
       <NewJournalContent />
     </Suspense>
   );

@@ -1,6 +1,8 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { Moon, Sun, Monitor } from "lucide-react";
+import { cn } from "../lib/utils";
 
 type Theme = "light" | "dark" | "system";
 
@@ -25,8 +27,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const root = document.documentElement;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     const apply = (t: Theme) => {
-      const next =
-        t === "system" ? (media.matches ? "dark" : "light") : t;
+      const next = t === "system" ? (media.matches ? "dark" : "light") : t;
       setResolved(next);
       root.classList.toggle("dark", next === "dark");
     };
@@ -54,22 +55,27 @@ export function useTheme() {
   return ctx;
 }
 
-export function ThemeToggle() {
+export function ThemeToggle({ className }: { className?: string }) {
   const { theme, setTheme, resolved } = useTheme();
   const cycle = () => {
     const order: Theme[] = ["light", "dark", "system"];
     const idx = order.indexOf(theme);
     setTheme(order[(idx + 1) % order.length]!);
   };
-  const icon = resolved === "dark" ? "🌙" : "☀️";
+  const Icon = theme === "system" ? Monitor : resolved === "dark" ? Moon : Sun;
+
   return (
     <button
       type="button"
       onClick={cycle}
-      className="rounded-xl border border-border bg-card px-3 py-2 text-sm hover:bg-accent transition-colors"
+      className={cn(
+        "inline-flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm font-medium shadow-soft hover:bg-accent transition-colors touch-target focus-ring",
+        className
+      )}
       aria-label={`Theme: ${theme}. Click to change.`}
     >
-      {icon} <span className="capitalize">{theme}</span>
+      <Icon className="h-4 w-4" />
+      <span className="capitalize hidden sm:inline">{theme}</span>
     </button>
   );
 }

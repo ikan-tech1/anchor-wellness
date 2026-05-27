@@ -1,12 +1,18 @@
 import type { Metadata, Viewport } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
-import { Geist } from "next/font/google";
+import { Geist, Lora } from "next/font/google";
 import { ThemeProvider } from "@anchor/ui";
 import "./globals.css";
 
 const geistSans = Geist({
   subsets: ["latin"],
   variable: "--font-geist-sans",
+});
+
+const lora = Lora({
+  subsets: ["latin"],
+  variable: "--font-serif",
+  weight: ["400", "500", "600"],
 });
 
 export const metadata: Metadata = {
@@ -24,7 +30,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f7f6f3" },
-    { media: "(prefers-color-scheme: dark)", color: "#1a1714" },
+    { media: "(prefers-color-scheme: dark)", color: "#12100e" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -42,7 +48,9 @@ export default function RootLayout({
 }) {
   const shell = (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.variable} font-sans grain min-h-screen`}>
+      <body
+        className={`${geistSans.variable} ${lora.variable} font-sans grain bg-mesh min-h-screen`}
+      >
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

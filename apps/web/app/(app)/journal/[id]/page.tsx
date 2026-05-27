@@ -8,7 +8,13 @@ import {
   updateJournalBlock,
   removeJournalEntry,
 } from "@/app/actions/data";
-import { JournalEditor, Button, MoodPicker } from "@anchor/ui";
+import {
+  JournalEditor,
+  Button,
+  MoodPicker,
+  PageShell,
+  PageSkeleton,
+} from "@anchor/ui";
 import { ArrowLeft, Lock, Download, Trash2, EyeOff } from "lucide-react";
 import Link from "next/link";
 
@@ -113,16 +119,19 @@ export default function JournalEntryPage({ params }: { params: Promise<{ id: str
   }
 
   if (loading) {
-    return <div className="p-6 text-center text-muted-foreground">Loading...</div>;
+    return <PageSkeleton />;
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4">
+    <PageShell className="mx-auto max-w-3xl md:max-w-4xl lg:max-w-5xl space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/journal" className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ArrowLeft className="h-4 w-4" /> Back
+        <Link
+          href="/journal"
+          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors touch-target"
+        >
+          <ArrowLeft className="h-4 w-4" /> Journal
         </Link>
-        <div className="flex gap-2">
+        <div className="flex gap-1">
           <Button
             variant="ghost"
             size="icon"
@@ -134,7 +143,12 @@ export default function JournalEntryPage({ params }: { params: Promise<{ id: str
           <Button variant="ghost" size="icon" onClick={exportMarkdown} title="Export">
             <Download className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => setIsLocked(!isLocked)} title="Lock entry">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsLocked(!isLocked)}
+            title="Lock entry"
+          >
             <Lock className={`h-4 w-4 ${isLocked ? "text-primary" : ""}`} />
           </Button>
           <Button variant="ghost" size="icon" onClick={handleDelete} title="Delete">
@@ -144,17 +158,24 @@ export default function JournalEntryPage({ params }: { params: Promise<{ id: str
       </div>
 
       {isPrivate && (
-        <p className="text-xs text-muted-foreground rounded-lg bg-secondary/50 px-3 py-2">
+        <p className="text-xs text-muted-foreground rounded-xl bg-secondary/60 px-4 py-3 border border-border/60">
           Private entry — excluded from AI memory retrieval
         </p>
       )}
 
-      <MoodPicker value={moodScore} onChange={setMoodScore} size="sm" />
+      <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+        <MoodPicker value={moodScore} onChange={setMoodScore} size="sm" />
+      </div>
 
       {mediaBlocks.length > 0 && (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-3">
           {mediaBlocks.map((m) => (
-            <img key={m.id} src={m.url} alt="" className="rounded-xl object-cover aspect-video w-full" />
+            <img
+              key={m.id}
+              src={m.url}
+              alt=""
+              className="rounded-2xl object-cover aspect-video w-full shadow-soft"
+            />
           ))}
         </div>
       )}
@@ -170,6 +191,6 @@ export default function JournalEntryPage({ params }: { params: Promise<{ id: str
         actionItems={actionItems}
         onToggleAction={toggleAction}
       />
-    </div>
+    </PageShell>
   );
 }
